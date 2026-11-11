@@ -1,0 +1,113 @@
+---
+title: "Portfolio"
+description: "One normalized view of what a user put in, what they earned and what it's worth."
+---
+
+The portfolio answers the three questions every investor asks: how much did I put in, how much have I made, and what is it worth now. It answers them the same way for every instrument.
+
+## The summary
+
+```json
+{
+  "total_value_usd": "998.45",
+  "net_deposits_usd": "1000.00",
+  "total_return_usd": "-1.55",
+  "total_return_pct": "-0.16",
+  "total_principal_usd": "999.68",
+  "total_yield_earned_usd": "0.00",
+  "total_unrealized_pnl_usd": "-1.23",
+  "total_realized_pnl_usd": "0.00",
+  "display": {
+    "currency": "BRL",
+    "fx_rate": "5.5539",
+    "total_value": "5545.27",
+    "total_return": "-8.63"
+  }
+}
+```
+
+| Field | Meaning |
+| --- | --- |
+| `total_value_usd` | What everything is worth right now, cash included. |
+| `net_deposits_usd` | Deposits minus withdrawals. The money the user put in. |
+| `total_return_usd` | Total value minus net deposits. The all-time result, after fees. |
+| `total_yield_earned_usd` | Interest earned on savings and yield instruments. |
+| `total_unrealized_pnl_usd` | Gain or loss on what the user still holds. |
+| `total_realized_pnl_usd` | Gain or loss locked in by selling. |
+
+The headline number for most apps is `total_return_usd`: "You've made $42.10."
+
+## Positions
+
+Each holding is one position, however it was bought and however many purchases built it.
+
+<Tabs>
+  <Tab title="Stock">
+    ```json
+    {
+      "instrument": "equity:NVDA",
+      "name": "NVIDIA",
+      "asset_class": "equity",
+      "units": "1.42017204",
+      "price_usd": "175.425",
+      "value_usd": "249.13",
+      "cost_basis_usd": "250.00",
+      "unrealized_pnl_usd": "-0.87",
+      "unrealized_pnl_pct": "-0.35",
+      "realized_pnl_usd": "0.00",
+      "value_display": "1383.67"
+    }
+    ```
+  </Tab>
+  <Tab title="Savings">
+    ```json
+    {
+      "instrument": "savings:usd",
+      "name": "Dollar Savings",
+      "asset_class": "lending_yield",
+      "value_usd": "299.68",
+      "principal_usd": "299.68",
+      "yield_earned_usd": "0.00",
+      "current_apy": "0.0547",
+      "value_display": "1664.39"
+    }
+    ```
+  </Tab>
+  <Tab title="Cash">
+    ```json
+    {
+      "instrument": "usd",
+      "name": "US Dollar",
+      "asset_class": "cash",
+      "units": "350",
+      "available_units": "350",
+      "value_usd": "350.00",
+      "value_display": "1943.87"
+    }
+    ```
+  </Tab>
+</Tabs>
+
+Different kinds of asset are measured the way users think about them:
+
+- **Stocks, gold and crypto** have a cost basis and a profit or loss. Cost basis is the average price paid.
+- **Savings and yield** have a principal and yield earned, reported separately. The user sees "$300 deposited, $4.12 earned" without you doing any maths.
+- **Cash** has `units` and `available_units`. The difference is money reserved for open orders.
+
+## Display currency
+
+Every value comes in US dollars and in the user's `display_currency`. Pass `?currency=MXN` to override it for one request. The `display.fx_rate` used is included, so your numbers always reconcile.
+
+## History
+
+[`GET /v1/users/{id}/portfolio/history`](/api-reference/portfolio/history) returns a time series ready to chart: total value, net deposits and cumulative yield at each point, for `1D`, `1W`, `1M`, `1Y` or `ALL`.
+
+Plot `value_usd` against `net_deposits_usd` and the gap between the two lines is the user's return.
+
+## Activity
+
+[`GET /v1/users/{id}/activity`](/api-reference/portfolio/activity) is the user's ledger: deposits, buys, sells and withdrawals, newest first. Each entry has a `description` written for end users, such as "Deposit of 1000 USDC".
+
+## Keeping your screen fresh
+
+Listen for `portfolio.updated` [events](/guides/events) and refetch the portfolio when one arrives, or refetch when the user opens the screen. Prices move continuously, so `as_of` tells you when the snapshot was taken.

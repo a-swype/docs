@@ -1,0 +1,66 @@
+---
+title: "Authentication"
+description: "Authenticate with an API key sent as a bearer token."
+---
+
+Send your API key in the `Authorization` header of every request.
+
+```bash
+curl https://api.fissient.com/v1/instruments \
+  -H "Authorization: Bearer sk_test_..."
+```
+
+All requests must use HTTPS. A request without a valid key returns `401`.
+
+## Key types
+
+A key's prefix tells you what it can do and which mode it runs in.
+
+| Prefix | Type | Use it for |
+| --- | --- | --- |
+| `sk_` | Secret key | Your backend. Full access. |
+| `ak_` | Agent key | AI agents. Can trade inside each user's guardrails. Can't withdraw, approve orders, change limits or link wallets. |
+| `rk_` | Read-only key | Dashboards and analytics. `GET` requests and quotes only. |
+
+The second part of the prefix is the mode:
+
+| Prefix | Mode |
+| --- | --- |
+| `_test_` | Sandbox. Real prices, simulated money. |
+| `_live_` | Live. Real money. |
+
+So `sk_test_...` is a sandbox secret key and `ak_live_...` is a live agent key. Sandbox and live data are completely separate.
+
+<Warning>
+  Secret keys can move money. Keep them on your server, in a secrets manager. Never put one in a browser, a mobile app or a repository.
+</Warning>
+
+## Creating and revoking keys
+
+Use a secret key to [create](/api-reference/api-keys/create) agent and read-only keys, and to [revoke](/api-reference/api-keys/revoke) them. A new key's secret is shown once, in the response that creates it. A revoked key fails with `401` from then on.
+
+## Authentication errors
+
+| Status | Code | Meaning |
+| --- | --- | --- |
+| `401` | `missing_api_key` | No `Authorization` header was sent. |
+| `401` | `invalid_api_key` | The key is wrong, revoked, or for the other mode. |
+| `403` | `read_only_key` | A read-only key tried to change something. |
+| `403` | `agent_key_not_permitted` | An agent key tried something only a secret key can do. |
+| `403` | `sandbox_only` | A live key called a sandbox endpoint. |
+
+```json
+{
+  "error": {
+    "type": "authentication_error",
+    "code": "invalid_api_key",
+    "message": "Invalid or revoked API key.",
+    "hint": "Check the key's mode (test vs live) and that it hasn't been revoked.",
+    "request_id": "req_53569989a15d4a04a003"
+  }
+}
+```
+
+<Tip>
+  A `404 user_not_found` on a user you know exists usually means the key is in the wrong mode. A test key can't see live users.
+</Tip>

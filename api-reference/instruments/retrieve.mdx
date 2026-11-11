@@ -1,0 +1,155 @@
+---
+title: "Retrieve an instrument"
+api: "GET /v1/instruments/{id}"
+description: "Returns one instrument with its live price or rate, risks and disclosures."
+---
+
+## Path parameters
+
+<ParamField path="id" type="string" required>
+  The instrument id, such as `equity:NVDA`, `gold` or `savings:usd`.
+</ParamField>
+
+## The instrument object
+
+<ResponseField name="id" type="string">
+  The instrument id. Use it in quotes and orders.
+</ResponseField>
+<ResponseField name="object" type="string">
+  Always `instrument`.
+</ResponseField>
+<ResponseField name="name" type="string">
+  The display name, such as "NVIDIA". Show this to users.
+</ResponseField>
+<ResponseField name="symbol" type="string">
+  A short symbol, such as `NVDA`.
+</ResponseField>
+<ResponseField name="category" type="string">
+  A grouping for your interface, such as `stocks`, `savings`, `gold` or `crypto`.
+</ResponseField>
+<ResponseField name="asset_class" type="string">
+  `equity`, `gold`, `crypto`, `lending_yield`, `treasury_yield` or `cash`.
+</ResponseField>
+<ResponseField name="tagline" type="string">
+  One line describing the instrument.
+</ResponseField>
+<ResponseField name="summary" type="string">
+  A plain-language description for end users.
+</ResponseField>
+<ResponseField name="issuer" type="string">
+  Who stands behind the product.
+</ResponseField>
+<ResponseField name="risks" type="string[]">
+  Risk statements written for end users. Show them before a first purchase.
+</ResponseField>
+<ResponseField name="disclosures" type="object[]">
+  Documents to link to, each with a `title` and `url`.
+</ResponseField>
+<ResponseField name="price" type="object">
+  The current indicative price.
+
+  <Expandable title="properties">
+    <ResponseField name="usd" type="string">
+      Price of one unit in US dollars.
+    </ResponseField>
+    <ResponseField name="as_of" type="string">
+      When the price was read.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+<ResponseField name="yield" type="object | null">
+  For instruments that earn. `null` otherwise.
+
+  <Expandable title="properties">
+    <ResponseField name="type" type="string">
+      `variable` or `fixed`.
+    </ResponseField>
+    <ResponseField name="apy" type="string">
+      Net annual rate the user earns, as a decimal. `"0.0547"` is 5.47%.
+    </ResponseField>
+    <ResponseField name="as_of" type="string">
+      When the rate was read.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+<ResponseField name="liquidity" type="object">
+  <Expandable title="properties">
+    <ResponseField name="buy_settlement" type="string">
+      How long buys take, such as `instant`.
+    </ResponseField>
+    <ResponseField name="sell_settlement" type="string">
+      How long sells take.
+    </ResponseField>
+    <ResponseField name="lockup_days" type="number | null">
+      Days a purchase must be held before selling, if any.
+    </ResponseField>
+    <ResponseField name="min_order_usd" type="string">
+      Smallest order accepted.
+    </ResponseField>
+    <ResponseField name="max_instant_order_usd" type="string">
+      Largest order that settles instantly.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+<ResponseField name="fees" type="object">
+  <Expandable title="properties">
+    <ResponseField name="all_in_execution_bps" type="number">
+      Typical cost of a trade in basis points. The exact fee is on each quote.
+    </ResponseField>
+    <ResponseField name="annual_platform_bps" type="number">
+      Annual fee in basis points, already reflected in `yield.apy`.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+<ResponseField name="status" type="string">
+  `active`, `sell_only` or `halted`.
+</ResponseField>
+<ResponseField name="trading" type="object">
+  `spot` is `true` if the instrument can be bought outright. `leverage` is `true` if leveraged positions are available.
+</ResponseField>
+<ResponseField name="leverage" type="object">
+  Present when leverage is available. `max` is the market's limit and `allowed_max` is the limit after the user's cap.
+</ResponseField>
+<ResponseField name="eligibility" type="object">
+  Present on [list](/api-reference/instruments/list) responses when you pass `user_id`.
+</ResponseField>
+
+<RequestExample>
+  ```bash cURL
+  curl https://api.fissient.com/v1/instruments/equity:NVDA \
+    -H "Authorization: Bearer $FISSIENT_KEY"
+  ```
+</RequestExample>
+
+<ResponseExample>
+  ```json 200
+  {
+    "id": "equity:NVDA",
+    "object": "instrument",
+    "name": "NVIDIA",
+    "symbol": "NVDA",
+    "category": "stocks",
+    "asset_class": "equity",
+    "tagline": "Tracks NVIDIA shares",
+    "summary": "Exposure to NVIDIA (NVDA), backed 1:1 by the underlying shares held by the issuer.",
+    "risks": [
+      "Price tracks the underlying security but trades 24/7; spreads widen outside US market hours.",
+      "Holders have economic exposure only; no shareholder voting rights."
+    ],
+    "price": { "usd": "175.395", "as_of": "2026-11-11T19:39:06.017Z" },
+    "yield": null,
+    "liquidity": {
+      "buy_settlement": "instant",
+      "sell_settlement": "instant",
+      "lockup_days": null,
+      "min_order_usd": "1.00",
+      "max_instant_order_usd": "10000.00"
+    },
+    "fees": { "all_in_execution_bps": 25, "annual_platform_bps": 0 },
+    "disclosures": [{ "title": "Product terms", "url": "https://..." }],
+    "status": "active",
+    "trading": { "spot": true, "leverage": true },
+    "leverage": { "max": 20, "allowed_max": 20 }
+  }
+  ```
+</ResponseExample>

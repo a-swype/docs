@@ -1,0 +1,191 @@
+---
+title: "Create an order"
+api: "POST /v1/orders"
+description: "Executes a quote now, or places an order that waits for a price."
+---
+
+There are two ways to call this endpoint:
+
+- **Market order.** Send a `quote_id`. The quote executes immediately.
+- **Limit or stop order.** Send `order_type` with the trade and its price. Funds or units are reserved now, and the order executes when the price is met. See [Order types](/guides/order-types).
+
+Always send an [`Idempotency-Key`](/api-reference/idempotency).
+
+## Query parameters
+
+<ParamField query="wait" type="integer">
+  Seconds to hold the response, up to 60, until the order completes, fails, or needs approval or funding. Applies to market orders.
+</ParamField>
+
+## Body: market order
+
+<ParamField body="quote_id" type="string" required>
+  The quote to execute. It must not be expired, used, or a dry run.
+</ParamField>
+
+## Body: limit or stop order
+
+<ParamField body="user_id" type="string" required>
+  The user placing the order.
+</ParamField>
+
+<ParamField body="instrument" type="string" required>
+  The instrument to trade.
+</ParamField>
+
+<ParamField body="side" type="string" required>
+  `buy` or `sell`.
+</ParamField>
+
+<ParamField body="order_type" type="string" required>
+  `limit`, `stop`, `stop_limit` or `take_profit`.
+</ParamField>
+
+<ParamField body="limit_price_usd" type="string">
+  Required for `limit` and `stop_limit`. The worst price the order may fill at.
+</ParamField>
+
+<ParamField body="trigger_price_usd" type="string">
+  Required for `stop`, `stop_limit` and `take_profit`. The price that activates the order.
+</ParamField>
+
+<ParamField body="funding" type="object">
+  For buys. `asset` and `amount`, as on a [quote](/api-reference/quotes/create). The amount is reserved while the order is open.
+</ParamField>
+
+<ParamField body="units" type="string">
+  For sells. Units to sell, or `"all"`. The units are reserved while the order is open.
+</ParamField>
+
+<ParamField body="time_in_force" type="string" default="gtc">
+  `gtc` keeps the order open for up to 90 days. `day` keeps it open for 24 hours.
+</ParamField>
+
+<ParamField body="payout" type="object">
+  For sells. `asset` is the currency to receive.
+</ParamField>
+
+<ParamField body="leverage" type="integer">
+  Opens a leveraged position when the order triggers.
+</ParamField>
+
+<ParamField body="direction" type="string">
+  `long` or `short`, for leveraged positions.
+</ParamField>
+
+<ParamField body="close" type="boolean">
+  Closes the user's leveraged position when the order triggers. Use with `direction`.
+</ParamField>
+
+<ParamField body="max_cost_bps" type="integer">
+  Ceiling on the all-in cost, applied when the order triggers.
+</ParamField>
+
+## Returns
+
+The [order object](/api-reference/orders/retrieve). Check `status`:
+
+| Status | What to do |
+| --- | --- |
+| `completed` | Done. Show the result. |
+| `routing`, `settling` | In progress. Wait, listen for `order.updated`, or poll. |
+| `open` | A limit or stop order waiting for its price. |
+| `needs_approval` | Ask the user, then [approve](/api-reference/orders/approve) or [cancel](/api-reference/orders/cancel). |
+| `awaiting_funding` | Send the transfer described in `funding_instructions`. |
+| `failed` | Nothing was traded. `failure` says why. |
+
+<RequestExample>
+  ```bash Market
+  curl "https://api.fissient.com/v1/orders?wait=30" \
+    -H "Authorization: Bearer $FISSIENT_KEY" \
+    -H "Content-Type: application/json" \
+    -H "Idempotency-Key: order-8431-0001" \
+    -d '{ "quote_id": "qt_01M761Y4SY3BG7S7114Z4V3EMG" }'
+  ```
+
+  ```bash Limit
+  curl https://api.fissient.com/v1/orders \
+    -H "Authorization: Bearer $FISSIENT_KEY" \
+    -H "Content-Type: application/json" \
+    -H "Idempotency-Key: limit-8431-0001" \
+    -d '{
+      "user_id": "usr_01M761XYYTGZK43AP9XK0WKQ97",
+      "instrument": "gold",
+      "side": "buy",
+      "order_type": "limit",
+      "limit_price_usd": "3800.00",
+      "funding": { "asset": "usdc", "amount": "50.00" }
+    }'
+  ```
+
+  ```bash Stop loss
+  curl https://api.fissient.com/v1/orders \
+    -H "Authorization: Bearer $FISSIENT_KEY" \
+    -H "Content-Type: application/json" \
+    -H "Idempotency-Key: stop-8431-0001" \
+    -d '{
+      "user_id": "usr_01M761XYYTGZK43AP9XK0WKQ97",
+      "instrument": "equity:NVDA",
+      "side": "sell",
+      "order_type": "stop",
+      "trigger_price_usd": "150.00",
+      "units": "all"
+    }'
+  ```
+</RequestExample>
+
+<ResponseExample>
+  ```json 201 Market
+  {
+    "id": "ord_01M761Y4TV5PH23YVNCTDW63W1",
+    "object": "order",
+    "quote_id": "qt_01M761Y4SY3BG7S7114Z4V3EMG",
+    "user_id": "usr_01M761XYYTGZK43AP9XK0WKQ97",
+    "status": "completed",
+    "order_type": "market",
+    "side": "buy",
+    "instrument": "equity:NVDA",
+    "leveraged": null,
+    "input": { "asset": "usdc", "amount": "250", "value_usd": "250.00" },
+    "output": { "asset": "equity:NVDA", "units": "1.42017204", "value_usd": "249.09" },
+    "effective_price_usd": "176.04",
+    "fees": { "all_in_fee_usd": "0.91" },
+    "failure": null,
+    "created_at": "2026-11-11T19:39:11.067Z",
+    "completed_at": "2026-11-11T19:39:11.695Z"
+  }
+  ```
+
+  ```json 201 Limit
+  {
+    "id": "ord_01M761YF1AWJXAFAT35AMA04PM",
+    "object": "order",
+    "quote_id": null,
+    "user_id": "usr_01M761XYYTGZK43AP9XK0WKQ97",
+    "status": "open",
+    "order_type": "limit",
+    "limit_price_usd": "3800.00",
+    "trigger_price_usd": null,
+    "time_in_force": "gtc",
+    "expires_at": "2027-02-09T19:39:21.513Z",
+    "side": "buy",
+    "instrument": "gold",
+    "input": { "asset": "usdc", "amount": "50", "value_usd": "50.00" },
+    "output": null,
+    "fees": { "all_in_fee_usd": "0.19" },
+    "created_at": "2026-11-11T19:39:21.513Z",
+    "completed_at": null
+  }
+  ```
+
+  ```json 409
+  {
+    "error": {
+      "type": "conflict",
+      "code": "quote_expired",
+      "message": "This quote has expired.",
+      "hint": "Quotes live about a minute: create a new one with POST /v1/quotes and place it right away."
+    }
+  }
+  ```
+</ResponseExample>

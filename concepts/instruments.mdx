@@ -1,0 +1,88 @@
+---
+title: "Instruments"
+description: "An instrument is anything a user can hold, from NVIDIA to Dollar Savings."
+---
+
+The catalog is a list of instruments. Each one is a single financial product with a live price or rate, a plain-language summary, its risks and its disclosures.
+
+## Asset classes
+
+| `asset_class` | What it is | Examples |
+| --- | --- | --- |
+| `equity` | US stocks and ETFs | `equity:NVDA`, `equity:SPY` |
+| `gold` | Gold, priced per troy ounce | `gold` |
+| `crypto` | Cryptocurrencies | `btc`, `eth` |
+| `lending_yield` | Dollar savings that earn a variable rate | `savings:usd` |
+| `treasury_yield` | Yield backed by short-term US Treasuries | `us-treasuries` |
+| `cash` | The user's uninvested balance | `usd` |
+
+## Instrument ids
+
+Ids are short and readable. Use them in quotes, orders and eligibility checks.
+
+```text
+equity:NVDA     gold     btc     savings:usd     us-treasuries
+```
+
+When you create a quote, `instrument` also accepts a symbol or name, as long as it matches exactly one instrument. `NVDA` works. A name that matches several returns the error `ambiguous_asset` with the candidates in `details.candidates`.
+
+<Tip>
+  Ids are for your code. In your interface, show the instrument's `name`: "NVIDIA", "Gold", "Dollar Savings".
+</Tip>
+
+## What an instrument tells you
+
+```json
+{
+  "id": "savings:usd",
+  "object": "instrument",
+  "name": "Dollar Savings",
+  "symbol": "USD",
+  "asset_class": "lending_yield",
+  "tagline": "Earns from over-collateralized lending · best rate picked automatically",
+  "summary": "Dollars are lent to over-collateralized borrowers and earn a variable rate.",
+  "risks": [
+    "Deposits are lent to over-collateralized borrowers.",
+    "Withdrawals depend on available liquidity."
+  ],
+  "price": { "usd": "1.03423", "as_of": "2026-11-11T19:39:08.094Z" },
+  "yield": { "type": "variable", "apy": "0.0547", "as_of": "2026-11-11T19:39:07.381Z" },
+  "liquidity": {
+    "buy_settlement": "instant",
+    "sell_settlement": "instant",
+    "min_order_usd": "1.00",
+    "max_instant_order_usd": "50000.00"
+  },
+  "fees": { "all_in_execution_bps": 10, "annual_platform_bps": 25 },
+  "disclosures": [{ "title": "How it works", "url": "https://..." }],
+  "status": "active",
+  "trading": { "spot": true, "leverage": false }
+}
+```
+
+A few fields deserve attention:
+
+- **`yield.apy`** is the net rate the user earns, as a decimal. `0.0547` is 5.47% a year.
+- **`liquidity.min_order_usd`** is the smallest order we accept.
+- **`risks` and `disclosures`** are written for end users. Show them before a first purchase.
+- **`status`** is `active`, `sell_only` or `halted`. A `sell_only` instrument can still be sold but not bought.
+- **`trading.leverage`** says whether [leveraged positions](/guides/leverage) are available.
+
+## Prices and rates are live
+
+`price` and `yield` are current each time you read the instrument. They're indicative. The price a user actually gets is the one on their [quote](/concepts/quotes-and-orders).
+
+## Beyond the catalog
+
+The catalog covers the assets most apps want. If your users trade a wider range of crypto tokens, [search](/api-reference/instruments/search) finds them and returns an id you can quote the same way. Results outside the catalog carry `flags` such as `unverified` or `low_liquidity`. Show those to the user before they buy.
+
+## Related
+
+<CardGroup cols={2}>
+  <Card title="List instruments" icon="code" href="/api-reference/instruments/list">
+    API reference
+  </Card>
+  <Card title="Eligibility" icon="shield-check" href="/concepts/eligibility">
+    Which users can buy which instruments
+  </Card>
+</CardGroup>

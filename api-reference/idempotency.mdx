@@ -1,0 +1,44 @@
+---
+title: "Idempotency"
+description: "Retry any request safely, without trading or paying out twice."
+---
+
+If a request fails partway, you often can't tell whether it took effect. Idempotency keys solve that. Send a unique key with a request, and a retry with the same key returns the original result instead of doing the work again.
+
+## Sending a key
+
+Add an `Idempotency-Key` header to any `POST` request.
+
+```bash
+curl https://api.fissient.com/v1/orders \
+  -H "Authorization: Bearer $FISSIENT_KEY" \
+  -H "Content-Type: application/json" \
+  -H "Idempotency-Key: 7f3d2a9e-4c1b-4f6e-9a57-2b8e1c0d5f44" \
+  -d '{ "quote_id": "qt_01M761Y4SY3BG7S7114Z4V3EMG" }'
+```
+
+Use any unique string. A UUID works well. So does a key derived from your own record, such as `order-8431-0001`, which stays the same however many times your code retries.
+
+## How it behaves
+
+| Situation | Result |
+| --- | --- |
+| First request with a key | Runs normally. The response is saved. |
+| Same key, same request | Returns the saved response, with the header `Idempotent-Replayed: true`. Nothing runs again. |
+| Same key, different body or path | `409` with `idempotency_key_reused`. |
+| Same key, while the first is still running | `409` with `idempotency_in_progress`. Retry in a moment. |
+| First request failed with a `5xx` | The key is released, so a retry runs fresh. |
+
+Refusals are saved too. If the first request returned a `422`, the retry returns the same `422`. To try again after fixing the problem, use a new key.
+
+## Scope
+
+Keys are scoped to your account and to a mode. The same key used in the sandbox and in live mode identifies two different requests.
+
+`GET` and `PUT` requests are already safe to repeat, so they ignore the header.
+
+## Built-in protection for orders
+
+A quote can be executed only once, whether or not you send a key. Placing an order with a quote that already has one returns `409 quote_already_used`, with the existing order's id in `details.order_id`.
+
+You should still send a key on every `POST`. It covers the cases that have no quote, such as limit orders and withdrawals.

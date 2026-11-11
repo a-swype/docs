@@ -1,0 +1,96 @@
+---
+title: "Build a portfolio screen"
+description: "A home screen with a total, a chart, holdings and activity, from three calls."
+---
+
+Most investing apps open on the same screen: a big number, a chart, a list of holdings and recent activity. Each part maps to one endpoint.
+
+| Part of the screen | Endpoint |
+| --- | --- |
+| Total and return | [`GET /v1/users/{id}/portfolio`](/api-reference/portfolio/retrieve) |
+| Holdings list | The same response, `positions` |
+| Chart | [`GET /v1/users/{id}/portfolio/history`](/api-reference/portfolio/history) |
+| Recent activity | [`GET /v1/users/{id}/activity`](/api-reference/portfolio/activity) |
+
+## The headline
+
+```javascript
+const res = await fetch(`https://api.fissient.com/v1/users/${userId}/portfolio`, {
+  headers: { Authorization: `Bearer ${process.env.FISSIENT_KEY}` },
+});
+const { summary, positions } = await res.json();
+
+const total = summary.display.total_value;      // "5545.27"
+const currency = summary.display.currency;      // "BRL"
+const allTime = summary.display.total_return;   // "-8.63"
+const allTimePct = summary.total_return_pct;    // "-0.16"
+```
+
+<Note>
+  Amounts are decimal strings, not numbers, so no precision is lost in transit. Parse them with a decimal library, or format them directly. Avoid floating-point arithmetic on money.
+</Note>
+
+## Holdings
+
+Render one row per position. The `asset_class` tells you which numbers to show.
+
+| `asset_class` | Show |
+| --- | --- |
+| `equity`, `gold`, `crypto` | `value_usd` and `unrealized_pnl_usd` |
+| `lending_yield`, `treasury_yield` | `value_usd`, `yield_earned_usd` and `current_apy` |
+| `cash` | `value_usd`, labeled as cash |
+
+If a position has a `leveraged` object, show it as a leveraged position with its direction, leverage and liquidation price. See [Leverage](/guides/leverage).
+
+Use each position's `name` for the label. Every position also has `value_display`, the value in the user's currency.
+
+## The chart
+
+```bash
+curl "https://api.fissient.com/v1/users/usr_01M761XYYTGZK43AP9XK0WKQ97/portfolio/history?period=1M" \
+  -H "Authorization: Bearer $FISSIENT_KEY"
+```
+
+```json
+{
+  "object": "portfolio_history",
+  "period": "1M",
+  "currency": "BRL",
+  "points": [
+    {
+      "timestamp": "2026-11-11T19:39:00.000Z",
+      "value_usd": "998.45",
+      "value_display_currency": "5545.27",
+      "net_deposits_usd": "1000.00",
+      "cumulative_yield_usd": "0.00"
+    }
+  ]
+}
+```
+
+Plot `value_display_currency` over `timestamp`. Offer the five periods as tabs: `1D`, `1W`, `1M`, `1Y` and `ALL`.
+
+A new account has only a point or two. Make sure the chart still looks right with very little data.
+
+<Tip>
+  A deposit makes the value line jump, which can look like a gain. Plot `net_deposits_usd` as a second, lighter line so users can see the difference between money they added and money they made.
+</Tip>
+
+## Activity
+
+```bash
+curl "https://api.fissient.com/v1/users/usr_01M761XYYTGZK43AP9XK0WKQ97/activity?limit=20" \
+  -H "Authorization: Bearer $FISSIENT_KEY"
+```
+
+Each entry has a `type` (`deposit`, `withdrawal`, `buy`, `sell`), a `status`, an amount, and a `description`. Entries for open orders are included, so the list doubles as a view of what's pending.
+
+## Keeping it current
+
+- Refetch the portfolio when the screen opens.
+- Subscribe to `portfolio.updated` and `order.updated` [events](/guides/events), and refetch when one arrives for the user on screen.
+- Show `as_of` if you cache the response, so users know how fresh the numbers are.
+
+## Don't expose your key
+
+These calls use your secret key, so they belong on your server. Your app should call your own backend, which checks who the user is and then calls Fissient for that user only.

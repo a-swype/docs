@@ -1,0 +1,56 @@
+---
+title: "Approve an order"
+api: "POST /v1/orders/{id}/approve"
+description: "Releases an order that's waiting for the user's approval."
+---
+
+Call this after the user confirms a held order in your app. Eligibility and limits are checked again, and the order then executes like any other. See [Approvals](/guides/approvals).
+
+This call needs a secret key. An agent key gets `403 agent_key_not_permitted`.
+
+Held orders expire 15 minutes after they're placed.
+
+## Path parameters
+
+<ParamField path="id" type="string" required>
+  The order's id. Its status must be `needs_approval`.
+</ParamField>
+
+## Returns
+
+The [order object](/api-reference/orders/retrieve), now executing.
+
+<RequestExample>
+  ```bash cURL
+  curl -X POST https://api.fissient.com/v1/orders/ord_01M761YW3824SHD130ET4CD0CW/approve \
+    -H "Authorization: Bearer $FISSIENT_KEY"
+  ```
+</RequestExample>
+
+<ResponseExample>
+  ```json 200
+  {
+    "id": "ord_01M761YW3824SHD130ET4CD0CW",
+    "object": "order",
+    "status": "routing",
+    "order_type": "market",
+    "side": "buy",
+    "instrument": "gold",
+    "input": { "asset": "usdc", "amount": "250", "value_usd": "250.00" },
+    "output": null,
+    "fees": { "all_in_fee_usd": "1.15" },
+    "created_at": "2026-11-11T19:39:34.888Z",
+    "completed_at": null
+  }
+  ```
+
+  ```json 409
+  {
+    "error": {
+      "type": "conflict",
+      "code": "order_not_awaiting_approval",
+      "message": "This order isn't waiting for approval."
+    }
+  }
+  ```
+</ResponseExample>

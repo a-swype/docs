@@ -1,0 +1,126 @@
+---
+title: "Retrieve an order"
+api: "GET /v1/orders/{id}"
+description: "Returns an order and its current status."
+---
+
+## Path parameters
+
+<ParamField path="id" type="string" required>
+  The order's id, such as `ord_01M761Y4TV5PH23YVNCTDW63W1`.
+</ParamField>
+
+## Query parameters
+
+<ParamField query="wait" type="integer">
+  Seconds to hold the response, up to 60, until the order completes, fails, or needs approval or funding. Use it instead of a polling loop.
+</ParamField>
+
+## The order object
+
+<ResponseField name="id" type="string">
+  Unique id, prefixed `ord_`.
+</ResponseField>
+<ResponseField name="object" type="string">
+  Always `order`.
+</ResponseField>
+<ResponseField name="quote_id" type="string | null">
+  The quote this order executed. `null` for limit and stop orders.
+</ResponseField>
+<ResponseField name="user_id" type="string">
+  The user the order belongs to.
+</ResponseField>
+<ResponseField name="status" type="string">
+  One of `open`, `awaiting_funding`, `needs_approval`, `routing`, `settling`, `needs_reconciliation`, `completed`, `failed`, `canceled` or `expired`. See [order statuses](/concepts/quotes-and-orders#order-statuses).
+</ResponseField>
+<ResponseField name="order_type" type="string">
+  `market`, `limit`, `stop`, `stop_limit` or `take_profit`.
+</ResponseField>
+<ResponseField name="side" type="string">
+  `buy` or `sell`.
+</ResponseField>
+<ResponseField name="instrument" type="string">
+  The instrument id.
+</ResponseField>
+<ResponseField name="limit_price_usd" type="string | null">
+  The limit price, for limit and stop-limit orders.
+</ResponseField>
+<ResponseField name="trigger_price_usd" type="string | null">
+  The trigger price, for stop, stop-limit and take-profit orders.
+</ResponseField>
+<ResponseField name="time_in_force" type="string | null">
+  `gtc` or `day`, for limit and stop orders.
+</ResponseField>
+<ResponseField name="expires_at" type="string | null">
+  When an open order expires if it hasn't triggered.
+</ResponseField>
+<ResponseField name="triggered_at" type="string | null">
+  When a limit or stop order's price was met.
+</ResponseField>
+<ResponseField name="leveraged" type="object | null">
+  `null` for an ordinary trade. For a leveraged order: `direction` (`long` or `short`), `leverage`, and `action` (`open` or `close`).
+</ResponseField>
+<ResponseField name="input" type="object">
+  What the user gives up: `asset`, `amount` and `value_usd`.
+</ResponseField>
+<ResponseField name="output" type="object | null">
+  What the user received: `asset`, `units` and `value_usd`. `null` until the order completes.
+</ResponseField>
+<ResponseField name="effective_price_usd" type="string | null">
+  The price per unit achieved, fees included. `null` until the order completes.
+</ResponseField>
+<ResponseField name="fees" type="object">
+  `all_in_fee_usd` is the complete cost of the order.
+</ResponseField>
+<ResponseField name="funding_instructions" type="object | null">
+  Set while the order is `awaiting_funding`: the `asset`, `amount`, `chain`, `from_address` and `to_address` of the transfer it's waiting for, and the `funding_id` of that transfer.
+</ResponseField>
+<ResponseField name="failure" type="object | null">
+  Set when the order failed: a `code` and a `message`.
+</ResponseField>
+<ResponseField name="progress" type="object">
+  `steps_total` and `steps_completed`. Useful for a progress indicator while an order is executing.
+</ResponseField>
+<ResponseField name="created_at" type="string">
+  When the order was placed.
+</ResponseField>
+<ResponseField name="completed_at" type="string | null">
+  When the order completed.
+</ResponseField>
+
+<RequestExample>
+  ```bash cURL
+  curl "https://api.fissient.com/v1/orders/ord_01M761Y4TV5PH23YVNCTDW63W1?wait=30" \
+    -H "Authorization: Bearer $FISSIENT_KEY"
+  ```
+</RequestExample>
+
+<ResponseExample>
+  ```json 200
+  {
+    "id": "ord_01M761Y4TV5PH23YVNCTDW63W1",
+    "object": "order",
+    "quote_id": "qt_01M761Y4SY3BG7S7114Z4V3EMG",
+    "user_id": "usr_01M761XYYTGZK43AP9XK0WKQ97",
+    "status": "completed",
+    "order_type": "market",
+    "limit_price_usd": null,
+    "trigger_price_usd": null,
+    "time_in_force": null,
+    "expires_at": null,
+    "triggered_at": null,
+    "side": "buy",
+    "instrument": "equity:NVDA",
+    "leveraged": null,
+    "input": { "asset": "usdc", "amount": "250", "value_usd": "250.00" },
+    "output": { "asset": "equity:NVDA", "units": "1.42017204", "value_usd": "249.09" },
+    "effective_price_usd": "176.04",
+    "fees": { "all_in_fee_usd": "0.91" },
+    "funding_instructions": null,
+    "failure": null,
+    "progress": { "steps_total": 2, "steps_completed": 2 },
+    "created_at": "2026-11-11T19:39:11.067Z",
+    "completed_at": "2026-11-11T19:39:11.695Z"
+  }
+  ```
+</ResponseExample>

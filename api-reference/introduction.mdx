@@ -1,0 +1,100 @@
+---
+title: "API reference"
+description: "A REST API with predictable URLs, JSON bodies and standard HTTP status codes."
+---
+
+The Fissient API is organized around REST. It accepts JSON request bodies, returns JSON responses, and uses standard HTTP verbs, status codes and bearer authentication.
+
+<CodeGroup>
+  ```text Base URL
+  https://api.fissient.com
+  ```
+</CodeGroup>
+
+The same base URL serves the sandbox and live mode. Your [API key](/api-reference/authentication) decides which one a request runs in.
+
+## Conventions
+
+<AccordionGroup>
+  <Accordion title="Objects" defaultOpen>
+    Every object has an `id` and an `object` field naming its type. Ids carry a prefix that tells you what they are.
+
+    | Prefix | Object |
+    | --- | --- |
+    | `usr_` | User |
+    | `qt_` | Quote |
+    | `ord_` | Order |
+    | `fund_` | Funding transaction |
+    | `evt_` | Event |
+    | `we_` | Webhook endpoint |
+    | `key_` | API key |
+    | `req_` | Request |
+
+    Responses can gain new fields over time. Write your client to ignore fields it doesn't recognize.
+  </Accordion>
+
+  <Accordion title="Money">
+    Amounts are **decimal strings**, such as `"250.00"`. They're never floating-point numbers, so precision is never lost. Fields ending in `_usd` are US dollars. Fields ending in `_bps` are basis points, where 100 bps is 1%.
+
+    Rates such as `apy` are decimal fractions. `"0.0547"` means 5.47%.
+  </Accordion>
+
+  <Accordion title="Dates">
+    Timestamps are ISO 8601 strings in UTC, such as `2026-11-11T19:39:11.067Z`.
+  </Accordion>
+
+  <Accordion title="Countries and currencies">
+    Countries are two-letter ISO 3166-1 codes, such as `BR`. Currencies are three-letter ISO 4217 codes, such as `BRL`.
+  </Accordion>
+
+  <Accordion title="Lists">
+    List endpoints return an object with `object: "list"` and a `data` array.
+
+    ```json
+    { "object": "list", "data": [] }
+    ```
+  </Accordion>
+
+  <Accordion title="Request ids">
+    Every response includes an `X-Request-Id` header, and errors repeat it as `request_id`. Log it. You can also send your own `X-Request-Id` and we'll use it.
+  </Accordion>
+</AccordionGroup>
+
+## Rate limits
+
+Each API key can make 50 requests per second. Above that, requests return `429` with the code `rate_limited` and a `Retry-After` header. Back off and retry.
+
+## Waiting on orders
+
+Endpoints that return an order accept `?wait=`, a number of seconds up to 60. The response is held until the order reaches a state that needs your attention, or the time runs out. It saves you a polling loop.
+
+## Machine-readable resources
+
+| Resource | URL |
+| --- | --- |
+| OpenAPI 3.1 specification | `https://api.fissient.com/openapi.json` |
+| TypeScript types | `https://api.fissient.com/v1/types.ts` |
+| Guide for AI coding tools | `https://api.fissient.com/llms.txt` |
+
+## Endpoints
+
+<CardGroup cols={2}>
+  <Card title="Users" icon="user" href="/api-reference/users/create">
+    Create users, check eligibility, set guardrails.
+  </Card>
+  <Card title="Instruments" icon="building-columns" href="/api-reference/instruments/list">
+    The catalog, with live prices and rates.
+  </Card>
+  <Card title="Quotes" icon="receipt" href="/api-reference/quotes/create">
+    All-in prices for a trade.
+  </Card>
+  <Card title="Orders" icon="arrow-right-arrow-left" href="/api-reference/orders/create">
+    Place, track, cancel and approve.
+  </Card>
+  <Card title="Portfolio" icon="chart-pie" href="/api-reference/portfolio/retrieve">
+    Value, history and activity.
+  </Card>
+  <Card title="Funding" icon="wallet" href="/api-reference/funding/deposit-instructions">
+    Deposits and withdrawals.
+  </Card>
+</CardGroup>

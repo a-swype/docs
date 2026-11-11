@@ -1,37 +1,42 @@
-> **First-time setup**: Customize this file for your project. Prompt the user to customize this file for their project.
-> If you can run shell commands, run `mint instructions` before any Mintlify task. It prints current guidance for this CLI version. Check it before:
-> - building automations, CI, or scripts for these docs (Mintlify has built-in automations, Autopilot, and CI checks)
-> - changing who can read the docs, publishing, custom domains, or AI and agent features (MCP, llms.txt, skill.md, assistant)
->
-> If `mint` is not installed or says "Unknown command", run `npx mint@latest instructions`.
-> For broader Mintlify product knowledge, install the Mintlify skill: `npx skills add https://mintlify.com/docs`
-
 # Documentation project instructions
 
 ## About this project
 
-- This is a documentation site built on [Mintlify](https://mintlify.com)
-- Pages are MDX files with YAML frontmatter
-- Configuration lives in `docs.json`
-- Use the Mintlify MCP server, `https://mcp.mintlify.com`, to edit content and settings via MCP
-- Use the Mintlify docs MCP server, `https://www.mintlify.com/docs/mcp`, to query information about using Mintlify via MCP
+- Developer documentation for Fissient, an invest-and-earn API for fintechs, wallets and AI agents.
+- Built on [Mintlify](https://mintlify.com). Pages are MDX files with YAML frontmatter. Configuration lives in `docs.json`.
+- `Guides` tab: concepts and how-to guides. `API reference` tab: one hand-written page per endpoint, using the `api:` frontmatter field.
+
+## The rule that decides most questions
+
+**Technical on the backend, never technical for the reader.** The API exposes users, dollars, instruments, quotes, orders and portfolios. The docs must do the same.
+
+- Don't name the venues, issuers' token symbols, routing providers, wallet providers or networks an order uses internally. A user buys "NVIDIA" or "Dollar Savings".
+- Networks appear only where the integrator has to choose one: deposit addresses, withdrawals and linked wallets.
+- Never hide real risk, real fees or real failure. Say what happened in plain words.
+- Never tell a reader an order is done unless its status is `completed`.
 
 ## Terminology
 
-{/* Add product-specific terms and preferred usage */}
-{/* Example: Use "workspace" not "project", "member" not "user" */}
+- "user", not "end user" or "customer account"
+- "instrument" for anything in the catalog; "asset" only for what search returns
+- "cash" or "cash balance" for uninvested money
+- "guardrails" for the per-user `policy`
+- "secret key", "agent key", "read-only key"
+- "sandbox" and "live" for the two modes
+- "linked wallet" for `linked_home_wallet`
+- The product name appears as "Fissient". Use it sparingly so a rename is a small change; prefer "the API".
 
-## Style preferences
+## Style
 
-{/* Add any project-specific style rules below */}
-
-- Use active voice and second person ("you")
-- Keep sentences concise — one idea per sentence
-- Use sentence case for headings
-- Bold for UI elements: Click **Settings**
-- Code formatting for file names, commands, paths, and code references
+- Active voice, second person ("you").
+- Sentence case for headings.
+- One idea per sentence. Short paragraphs.
+- Every endpoint page has a request example and a response example taken from real sandbox output, trimmed to the documented fields.
+- Amounts in examples are decimal strings, as the API returns them.
+- No em dashes.
 
 ## Content boundaries
 
-{/* Define what should and shouldn't be documented */}
-{/* Example: Don't document internal admin features */}
+- Document only the partner-facing API and the MCP server.
+- Don't document the admin API, internal services or deployment.
+- Don't document fields that reveal how an order was fulfilled.

@@ -1,0 +1,90 @@
+---
+title: "Testing"
+description: "Build and test against the sandbox, with real prices and simulated money."
+---
+
+The sandbox is a full copy of the API where no real money moves. Use it to build your integration and to run automated tests.
+
+## Sandbox and live
+
+| | Sandbox | Live |
+| --- | --- | --- |
+| Key prefix | `sk_test_`, `ak_test_`, `rk_test_` | `sk_live_`, `ak_live_`, `rk_live_` |
+| Prices and rates | Real | Real |
+| Money | Simulated | Real |
+| Orders | Simulated, a few seconds each | Executed |
+| Data | Separate from live | Separate from sandbox |
+
+The same base URL serves both. The key decides which one you're in, and every object carries `livemode` so you can tell them apart.
+
+## Sandbox helpers
+
+These endpoints exist only in the sandbox. A live key gets `403 sandbox_only`.
+
+<CardGroup cols={2}>
+  <Card title="Credit a user" icon="plus" href="/api-reference/sandbox/credit">
+    Add test cash instantly.
+  </Card>
+  <Card title="Complete a deposit" icon="check" href="/api-reference/sandbox/complete-deposit">
+    Make a pending transfer arrive, or fail.
+  </Card>
+</CardGroup>
+
+## Scenarios worth testing
+
+<AccordionGroup>
+  <Accordion title="A successful buy and sell">
+    Follow the [quickstart](/quickstart), then quote a sell with `units: "all"` and place it. Check that the portfolio ends with cash only and that `total_realized_pnl_usd` reflects the round trip.
+  </Accordion>
+
+  <Accordion title="A US user">
+    Create a user with `residence_country: "US"`. Expect `422` with `code: "us_person"`.
+  </Accordion>
+
+  <Accordion title="Not enough cash">
+    Quote a buy for more than the user's balance and place the order. Expect `insufficient_funds`.
+  </Accordion>
+
+  <Accordion title="An order above the limit">
+    Set `max_order_usd` to `"500.00"` and quote $900.00. Expect `422` with `code: "max_order_exceeded"`.
+  </Accordion>
+
+  <Accordion title="An order that needs approval">
+    Set `approval_threshold_usd` to `"200.00"` and place a $250.00 order. Expect `status: "needs_approval"`. Approve it, then repeat and cancel it instead.
+  </Accordion>
+
+  <Accordion title="An expired quote">
+    Create a quote, wait 70 seconds and place it. Expect `409` with `code: "quote_expired"`.
+  </Accordion>
+
+  <Accordion title="A retried request">
+    Send the same order twice with the same `Idempotency-Key`. Expect the same order id both times, and the header `Idempotent-Replayed: true` on the second response.
+  </Accordion>
+
+  <Accordion title="A limit order">
+    Place a limit buy far below the market, confirm it's `open` and that the cash is reserved in the portfolio, then cancel it.
+  </Accordion>
+
+  <Accordion title="A linked-wallet buy">
+    Link a wallet, place a buy with no cash in the account, and expect `awaiting_funding`. Complete the deposit with the sandbox helper and watch the order finish.
+  </Accordion>
+</AccordionGroup>
+
+## Receiving events locally
+
+Webhooks need a public URL. On your own machine, use the [event stream](/guides/events#event-stream) instead:
+
+```bash
+curl -N https://api.fissient.com/v1/events -H "Authorization: Bearer $FISSIENT_KEY"
+```
+
+Leave it running in a terminal while you make requests and you'll see every event as it happens.
+
+## Sandbox warnings
+
+Sandbox quotes can include a `warnings` entry whose code starts with `sandbox_`. These explain how the simulated price was produced. They never appear in live mode, so you don't need to show them to users.
+
+## Differences to keep in mind
+
+- **Timing.** Sandbox orders complete in a few seconds. Live orders usually do too, but some take longer, so never assume a fixed duration. Wait for `completed`.
+- **Failures.** Live orders can fail for market reasons that the sandbox doesn't reproduce. Build the failed-order path even if you can't trigger it.

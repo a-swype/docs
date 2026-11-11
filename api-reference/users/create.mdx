@@ -1,0 +1,147 @@
+---
+title: "Create a user"
+api: "POST /v1/users"
+description: "Creates a user and opens their investing account."
+---
+
+Create one user for each of your customers. The user's account is ready as soon as this call returns.
+
+US residents and US nationals are refused with `422 us_person`.
+
+## Body
+
+<ParamField body="partner_user_ref" type="string" required>
+  Your own id for this customer, up to 128 characters. Must be unique. A second user with the same reference returns `409 user_already_exists`.
+</ParamField>
+
+<ParamField body="residence_country" type="string" required>
+  Two-letter country code of where the user lives, such as `BR`.
+</ParamField>
+
+<ParamField body="nationality" type="string" required>
+  Two-letter country code of the user's nationality.
+</ParamField>
+
+<ParamField body="investor_type" type="string" required>
+  `retail` or `professional`.
+</ParamField>
+
+<ParamField body="kyc_attested" type="boolean" required>
+  `true` if you've verified this person's identity. Users who aren't attested can't buy.
+</ParamField>
+
+<ParamField body="display_currency" type="string" default="USD">
+  Three-letter currency code used for display values, such as `BRL`.
+</ParamField>
+
+<ParamField body="policy" type="object">
+  Optional [guardrails](/concepts/guardrails) for the user.
+
+  <Expandable title="properties">
+    <ParamField body="max_order_usd" type="string">
+      Largest single order allowed.
+    </ParamField>
+    <ParamField body="approval_threshold_usd" type="string">
+      Orders above this wait for the user's approval.
+    </ParamField>
+    <ParamField body="max_leverage" type="string">
+      Whole number from 1 to 100 capping leverage.
+    </ParamField>
+  </Expandable>
+</ParamField>
+
+<ParamField body="linked_home_wallet" type="object">
+  The user's existing wallet in your app, if you have one. See [Link a wallet](/api-reference/users/link-wallet).
+</ParamField>
+
+## Returns
+
+The [user object](/api-reference/users/retrieve).
+
+<RequestExample>
+  ```bash cURL
+  curl https://api.fissient.com/v1/users \
+    -H "Authorization: Bearer $FISSIENT_KEY" \
+    -H "Content-Type: application/json" \
+    -H "Idempotency-Key: create-user-8431" \
+    -d '{
+      "partner_user_ref": "user_8431",
+      "residence_country": "BR",
+      "nationality": "BR",
+      "investor_type": "retail",
+      "display_currency": "BRL",
+      "kyc_attested": true
+    }'
+  ```
+
+  ```javascript Node.js
+  const res = await fetch("https://api.fissient.com/v1/users", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${process.env.FISSIENT_KEY}`,
+      "Content-Type": "application/json",
+      "Idempotency-Key": "create-user-8431",
+    },
+    body: JSON.stringify({
+      partner_user_ref: "user_8431",
+      residence_country: "BR",
+      nationality: "BR",
+      investor_type: "retail",
+      display_currency: "BRL",
+      kyc_attested: true,
+    }),
+  });
+  const user = await res.json();
+  ```
+
+  ```python Python
+  import os, requests
+
+  user = requests.post(
+      "https://api.fissient.com/v1/users",
+      headers={
+          "Authorization": f"Bearer {os.environ['FISSIENT_KEY']}",
+          "Idempotency-Key": "create-user-8431",
+      },
+      json={
+          "partner_user_ref": "user_8431",
+          "residence_country": "BR",
+          "nationality": "BR",
+          "investor_type": "retail",
+          "display_currency": "BRL",
+          "kyc_attested": True,
+      },
+  ).json()
+  ```
+</RequestExample>
+
+<ResponseExample>
+  ```json 201
+  {
+    "id": "usr_01M761XYYTGZK43AP9XK0WKQ97",
+    "object": "user",
+    "partner_user_ref": "user_8431",
+    "residence_country": "BR",
+    "nationality": "BR",
+    "investor_type": "retail",
+    "display_currency": "BRL",
+    "kyc_attested": true,
+    "status": "active",
+    "livemode": false,
+    "policy": {},
+    "linked_home_wallet": null,
+    "created_at": "2026-11-11T19:39:05.085Z"
+  }
+  ```
+
+  ```json 422
+  {
+    "error": {
+      "type": "not_eligible",
+      "code": "us_person",
+      "message": "US residents and nationals are not supported.",
+      "request_id": "req_53569989a15d4a04a003"
+    }
+  }
+  ```
+</ResponseExample>

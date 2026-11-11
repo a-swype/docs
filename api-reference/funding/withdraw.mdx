@@ -1,0 +1,117 @@
+---
+title: "Create a withdrawal"
+api: "POST /v1/funding/withdrawals"
+description: "Sends cash from a user's account to an address they choose."
+---
+
+Withdrawals come from the user's cash balance. To withdraw money that's invested, sell first.
+
+The destination is screened before any money moves. A sanctioned address is refused with `destination_sanctioned`.
+
+This call needs a secret key. Always send an [`Idempotency-Key`](/api-reference/idempotency), so a retry can never send the money twice.
+
+## Body
+
+<ParamField body="user_id" type="string" required>
+  The user withdrawing.
+</ParamField>
+
+<ParamField body="asset" type="string" required>
+  The currency to send: `usdc`, `usdt` or `eurc`.
+</ParamField>
+
+<ParamField body="amount" type="string" required>
+  How much to send, as a decimal string.
+</ParamField>
+
+<ParamField body="chain" type="string" required>
+  The network to send on: `ethereum`, `base`, `arbitrum`, `polygon` or `solana`. It must match the destination address.
+</ParamField>
+
+<ParamField body="destination" type="object" required>
+  <Expandable title="properties" defaultOpen>
+    <ParamField body="type" type="string" required>
+      Always `crypto`.
+    </ParamField>
+    <ParamField body="address" type="string" required>
+      The address to send to.
+    </ParamField>
+  </Expandable>
+</ParamField>
+
+## The funding transaction object
+
+<ResponseField name="id" type="string">
+  Unique id, prefixed `fund_`.
+</ResponseField>
+<ResponseField name="object" type="string">
+  Always `funding_transaction`.
+</ResponseField>
+<ResponseField name="user_id" type="string">
+  The user the transaction belongs to.
+</ResponseField>
+<ResponseField name="direction" type="string">
+  `deposit` or `withdrawal`.
+</ResponseField>
+<ResponseField name="status" type="string">
+  `pending`, `completed` or `failed`. A failed withdrawal returns the money to the user's balance.
+</ResponseField>
+<ResponseField name="asset" type="string">
+  The currency moved.
+</ResponseField>
+<ResponseField name="amount" type="string">
+  The amount requested.
+</ResponseField>
+<ResponseField name="value_usd" type="string">
+  The value in US dollars.
+</ResponseField>
+<ResponseField name="settled" type="object | null">
+  What actually moved, once it has: `asset` and `amount`.
+</ResponseField>
+<ResponseField name="order_id" type="string | null">
+  The order this transaction funds, if any.
+</ResponseField>
+<ResponseField name="created_at" type="string">
+  When the transaction was created.
+</ResponseField>
+<ResponseField name="completed_at" type="string | null">
+  When it completed.
+</ResponseField>
+
+<RequestExample>
+  ```bash cURL
+  curl https://api.fissient.com/v1/funding/withdrawals \
+    -H "Authorization: Bearer $FISSIENT_KEY" \
+    -H "Content-Type: application/json" \
+    -H "Idempotency-Key: withdrawal-8431-0001" \
+    -d '{
+      "user_id": "usr_01M761XYYTGZK43AP9XK0WKQ97",
+      "asset": "usdc",
+      "amount": "25.00",
+      "chain": "base",
+      "destination": {
+        "type": "crypto",
+        "address": "0xfB6916095ca1df60bB79Ce92cE3Ea74c37c5d359"
+      }
+    }'
+  ```
+</RequestExample>
+
+<ResponseExample>
+  ```json 201
+  {
+    "id": "fund_01M761YPP1XK8XK55TNP8EVDT1",
+    "object": "funding_transaction",
+    "user_id": "usr_01M761XYYTGZK43AP9XK0WKQ97",
+    "direction": "withdrawal",
+    "status": "pending",
+    "asset": "usdc",
+    "amount": "25",
+    "value_usd": "25.00",
+    "settled": null,
+    "order_id": null,
+    "created_at": "2026-11-11T19:39:29.345Z",
+    "completed_at": null
+  }
+  ```
+</ResponseExample>

@@ -1,0 +1,125 @@
+---
+title: "List activity"
+api: "GET /v1/users/{id}/activity"
+description: "Returns a user's ledger of deposits, buys, sells and withdrawals, newest first."
+---
+
+Activity combines orders and money movements into one feed. Open orders are included, so it also shows what's pending.
+
+## Path parameters
+
+<ParamField path="id" type="string" required>
+  The user's id.
+</ParamField>
+
+## Query parameters
+
+<ParamField query="limit" type="integer">
+  How many entries to return, from 1 to 200.
+</ParamField>
+
+## Returns
+
+<ResponseField name="object" type="string">
+  Always `list`.
+</ResponseField>
+<ResponseField name="user_id" type="string">
+  The user the activity belongs to.
+</ResponseField>
+<ResponseField name="data" type="object[]">
+  <Expandable title="properties" defaultOpen>
+    <ResponseField name="id" type="string">
+      The id of the order (`ord_`) or funding transaction (`fund_`) behind the entry.
+    </ResponseField>
+    <ResponseField name="type" type="string">
+      `deposit`, `withdrawal`, `buy` or `sell`.
+    </ResponseField>
+    <ResponseField name="status" type="string">
+      The status of the order or transaction.
+    </ResponseField>
+    <ResponseField name="asset" type="string">
+      The instrument or currency involved.
+    </ResponseField>
+    <ResponseField name="amount" type="string">
+      Units of `asset`.
+    </ResponseField>
+    <ResponseField name="value_usd" type="string">
+      Value in US dollars.
+    </ResponseField>
+    <ResponseField name="description" type="string">
+      A sentence describing the entry.
+    </ResponseField>
+    <ResponseField name="leveraged" type="object | null">
+      Set for leveraged orders: `direction`, `leverage` and `action`.
+    </ResponseField>
+    <ResponseField name="order_type" type="string">
+      For orders: `market`, `limit`, `stop`, `stop_limit` or `take_profit`.
+    </ResponseField>
+    <ResponseField name="limit_price_usd" type="string | null">
+      For orders that have one.
+    </ResponseField>
+    <ResponseField name="trigger_price_usd" type="string | null">
+      For orders that have one.
+    </ResponseField>
+    <ResponseField name="created_at" type="string">
+      When the entry was created.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<RequestExample>
+  ```bash cURL
+  curl "https://api.fissient.com/v1/users/usr_01M761XYYTGZK43AP9XK0WKQ97/activity?limit=3" \
+    -H "Authorization: Bearer $FISSIENT_KEY"
+  ```
+</RequestExample>
+
+<ResponseExample>
+  ```json 200
+  {
+    "object": "list",
+    "user_id": "usr_01M761XYYTGZK43AP9XK0WKQ97",
+    "data": [
+      {
+        "id": "ord_01M7622GG6A8C9SM35NDRJGRAX",
+        "type": "sell",
+        "status": "open",
+        "asset": "equity:NVDA",
+        "amount": "1.42017204",
+        "value_usd": "249.05",
+        "description": "Take profit: sell equity:NVDA if the price rises to $220.00 (waiting for the price)",
+        "leveraged": null,
+        "order_type": "take_profit",
+        "limit_price_usd": null,
+        "trigger_price_usd": "220.00",
+        "created_at": "2026-11-11T19:41:34.085Z"
+      },
+      {
+        "id": "ord_01M761Y4TV5PH23YVNCTDW63W1",
+        "type": "buy",
+        "status": "completed",
+        "asset": "equity:NVDA",
+        "amount": "1.42017204",
+        "value_usd": "250.00",
+        "description": "Bought equity:NVDA",
+        "leveraged": null,
+        "order_type": "market",
+        "limit_price_usd": null,
+        "trigger_price_usd": null,
+        "created_at": "2026-11-11T19:39:11.067Z"
+      },
+      {
+        "id": "fund_01M761XZ148N0NEWXRDEM56E2P",
+        "type": "deposit",
+        "status": "completed",
+        "asset": "usdc",
+        "amount": "1000",
+        "value_usd": "1000.00",
+        "description": "Deposit of 1000 USDC",
+        "leveraged": null,
+        "created_at": "2026-11-11T19:39:05.123Z"
+      }
+    ]
+  }
+  ```
+</ResponseExample>

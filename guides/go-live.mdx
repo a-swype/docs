@@ -1,0 +1,87 @@
+---
+title: "Go live"
+description: "A checklist for moving from the sandbox to real money."
+---
+
+Going live means swapping your test key for a live one. Before you do, work through this list.
+
+## 1. Account setup
+
+<Steps>
+  <Step title="Get your live key">
+    Live secret keys start with `sk_live_`. Store the key in your secrets manager. Never commit it or ship it in an app.
+  </Step>
+
+  <Step title="Confirm your countries">
+    Your account is enabled for a set of countries. Users who live elsewhere are refused with `partner_country_not_enabled`. Check the list covers your launch markets.
+  </Step>
+
+  <Step title="Register your account key">
+    Each user's account is controlled jointly by you and by us. Before you create live users, register a public key that represents your side of that control:
+
+    ```bash
+    curl -X PUT https://api.fissient.com/v1/partner/wallet-key \
+      -H "Authorization: Bearer $FISSIENT_KEY" \
+      -H "Content-Type: application/json" \
+      -d '{ "public_key": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAE..." }'
+    ```
+
+    Generate a P-256 key pair in your key management system, keep the private key there, and send us the public half. You do this once. It means your users' accounts stay under your control too, and neither side can remove the other.
+
+    Creating a live user before this step returns `wallet_key_required`.
+  </Step>
+</Steps>
+
+## 2. Integration checks
+
+<AccordionGroup>
+  <Accordion title="Keys stay on your server" icon="key">
+    Your app calls your backend, and your backend calls the API. A secret key in a browser or mobile app can be extracted by anyone.
+  </Accordion>
+
+  <Accordion title="Every POST sends an Idempotency-Key" icon="rotate">
+    Networks fail. With a key, a retry returns the first result instead of placing a second order or sending a second withdrawal. See [Idempotency](/api-reference/idempotency).
+  </Accordion>
+
+  <Accordion title="You handle every order status" icon="list-check">
+    Your interface has a state for `routing`, `needs_approval`, `awaiting_funding`, `completed`, `failed`, `canceled` and `expired`. An order is only shown as done when it's `completed`.
+  </Accordion>
+
+  <Accordion title="Webhooks are verified and deduplicated" icon="shield-check">
+    You check the signature on every delivery and ignore event ids you've already processed. See [Events](/guides/events).
+  </Accordion>
+
+  <Accordion title="Errors are shown in plain language" icon="comment">
+    You branch on `error.code`, not on the message text, and show the user what happened in your own words. See [Errors](/api-reference/errors).
+  </Accordion>
+
+  <Accordion title="Risks and fees are visible" icon="scale-balanced">
+    Users see the all-in fee before they confirm, and each instrument's `risks` and `disclosures` before their first purchase.
+  </Accordion>
+
+  <Accordion title="You log request ids" icon="magnifying-glass">
+    Every response includes `X-Request-Id`. Log it. It's the fastest way for us to find a request when you need help.
+  </Accordion>
+</AccordionGroup>
+
+## 3. Your users
+
+- **Verify identity first.** Only set `kyc_attested: true` for users you've actually verified. That attestation is what their eligibility rests on.
+- **Create live users.** Sandbox users don't carry over. Create each user again with your live key. Reusing the same `partner_user_ref` is fine, because the two modes are separate.
+- **Set guardrails.** Decide on default [limits](/concepts/guardrails), especially if agents can trade.
+
+## 4. First live trade
+
+Do one small round trip with your own account before you open the doors:
+
+1. Create a live user for yourself.
+2. Deposit a small amount.
+3. Buy something, then sell it.
+4. Withdraw what's left.
+5. Check that the portfolio, activity and your own records agree at each step.
+
+## After launch
+
+- Rotate keys by creating a new one and [revoking](/api-reference/api-keys/revoke) the old one.
+- Watch for `429` responses. The default limit is 50 requests per second per key.
+- Refresh your catalog regularly so it reflects instruments that become sell-only or halted.

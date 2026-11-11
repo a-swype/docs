@@ -1,0 +1,38 @@
+---
+title: "List API keys"
+api: "GET /v1/api-keys"
+description: "Returns your API keys in the current mode."
+---
+
+Secrets are never returned. Use `prefix` and `label` to tell keys apart.
+
+## Returns
+
+A list of [API key objects](/api-reference/api-keys/create), without `secret`.
+
+<RequestExample>
+  ```bash cURL
+  curl https://api.fissient.com/v1/api-keys \
+    -H "Authorization: Bearer $FISSIENT_KEY"
+  ```
+</RequestExample>
+
+<ResponseExample>
+  ```json 200
+  {
+    "object": "list",
+    "data": [
+      {
+        "id": "key_01M761YWWKJQEEVJXD30308GSX",
+        "object": "api_key",
+        "scope": "agent",
+        "prefix": "ak_test_kSj1",
+        "label": "assistant",
+        "livemode": false,
+        "created_at": "2026-11-11T19:39:35.699Z",
+        "revoked_at": null
+      }
+    ]
+  }
+  ```
+</ResponseExample>

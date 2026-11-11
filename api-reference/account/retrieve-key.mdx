@@ -1,0 +1,32 @@
+---
+title: "Retrieve your account key"
+api: "GET /v1/partner/wallet-key"
+description: "Returns the public key registered for your account."
+---
+
+Use this to check whether a key is registered. `public_key` is `null` until you [register one](/api-reference/account/register-key).
+
+## Returns
+
+<ResponseField name="object" type="string">
+  Always `wallet_key`.
+</ResponseField>
+<ResponseField name="public_key" type="string | null">
+  The registered key, or `null`.
+</ResponseField>
+
+<RequestExample>
+  ```bash cURL
+  curl https://api.fissient.com/v1/partner/wallet-key \
+    -H "Authorization: Bearer $FISSIENT_KEY"
+  ```
+</RequestExample>
+
+<ResponseExample>
+  ```json 200
+  {
+    "object": "wallet_key",
+    "public_key": null
+  }
+  ```
+</ResponseExample>

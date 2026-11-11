@@ -1,0 +1,65 @@
+---
+title: "Create a webhook endpoint"
+api: "POST /v1/webhook-endpoints"
+description: "Registers a URL to receive events."
+---
+
+After you register an endpoint, we `POST` each matching event to it, signed with the endpoint's secret. See [Events and webhooks](/guides/events) for the event format and how to verify signatures.
+
+An endpoint receives events for the mode of the key that created it. Register one with a test key for the sandbox and another with a live key for live mode.
+
+## Body
+
+<ParamField body="url" type="string" required>
+  The URL to deliver to. Live endpoints must use `https`.
+</ParamField>
+
+<ParamField body="events" type="string[]">
+  The event types to receive: `order.updated`, `portfolio.updated`, `funding.received`, `eligibility.changed`, `instrument.updated`. Leave out to receive all of them.
+</ParamField>
+
+## Returns
+
+<ResponseField name="id" type="string">
+  Unique id, prefixed `we_`.
+</ResponseField>
+<ResponseField name="object" type="string">
+  Always `webhook_endpoint`.
+</ResponseField>
+<ResponseField name="url" type="string">
+  The delivery URL.
+</ResponseField>
+<ResponseField name="events" type="string[]">
+  The event types this endpoint receives.
+</ResponseField>
+<ResponseField name="secret" type="string">
+  The signing secret, prefixed `whsec_`. Store it. You need it to verify deliveries.
+</ResponseField>
+<ResponseField name="status" type="string">
+  `enabled`.
+</ResponseField>
+
+<RequestExample>
+  ```bash cURL
+  curl https://api.fissient.com/v1/webhook-endpoints \
+    -H "Authorization: Bearer $FISSIENT_KEY" \
+    -H "Content-Type: application/json" \
+    -d '{
+      "url": "https://example.com/webhooks/fissient",
+      "events": ["order.updated", "funding.received"]
+    }'
+  ```
+</RequestExample>
+
+<ResponseExample>
+  ```json 201
+  {
+    "id": "we_01M761YWXSNWT9B06R17TE5F59",
+    "object": "webhook_endpoint",
+    "url": "https://example.com/webhooks/fissient",
+    "events": ["order.updated", "funding.received"],
+    "secret": "whsec_...",
+    "status": "enabled"
+  }
+  ```
+</ResponseExample>

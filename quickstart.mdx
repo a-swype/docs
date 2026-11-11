@@ -1,47 +1,187 @@
 ---
 title: "Quickstart"
-description: "Begin with a guide on the fastest path to a successful outcome"
+description: "Create a user, fund them and buy $250 of NVIDIA in the sandbox."
 ---
 
-Describe how someone begins using your product. What is the first thing they need to do? Are there any prerequisites?
+This guide takes a new user from nothing to a first holding. It uses the sandbox, so prices are real and the money isn't.
 
-A quickstart should take someone from zero to using your product. They'll get a quick win and a sense of what they can accomplish.
+## Before you begin
 
-## Prerequisites
+You need a sandbox secret key. It starts with `sk_test_`. Keep it on your server: it can do anything on your account, so it never belongs in a browser or mobile app.
 
-Before you begin, you must have:
+```bash
+export FISSIENT_KEY="sk_test_..."
+```
 
-- Requirement one (for example, Node.js 18+, a free account, an API key)
-- Requirement two (for example, a compatible device, a compatible browser, a compatible operating system)
-
-## Get started
+All requests go to `https://api.fissient.com` and authenticate with a bearer token.
 
 <Steps>
-  <Step title="Install">
-    Describe how to install your product or sign up.
+  <Step title="Create a user">
+    A user is one of your customers. You tell us where they live, their nationality, and that you've verified their identity. We open an account for them.
 
     ```bash
-    npm install your-package
+    curl https://api.fissient.com/v1/users \
+      -H "Authorization: Bearer $FISSIENT_KEY" \
+      -H "Content-Type: application/json" \
+      -H "Idempotency-Key: create-user-8431" \
+      -d '{
+        "partner_user_ref": "user_8431",
+        "residence_country": "BR",
+        "nationality": "BR",
+        "investor_type": "retail",
+        "display_currency": "BRL",
+        "kyc_attested": true
+      }'
     ```
+
+    ```json Response
+    {
+      "id": "usr_01M761XYYTGZK43AP9XK0WKQ97",
+      "object": "user",
+      "partner_user_ref": "user_8431",
+      "residence_country": "BR",
+      "display_currency": "BRL",
+      "status": "active",
+      "livemode": false
+    }
+    ```
+
+    Save the `id`. You pass it to every call you make for this user.
   </Step>
-  <Step title="Configure">
-    Describe any setup or configuration needed before first use.
+
+  <Step title="Add test money">
+    In the sandbox you can credit a user instantly. In live mode the user sends digital dollars to their account instead. See [Fund accounts](/guides/fund-accounts).
 
     ```bash
-    your-cli init
+    curl https://api.fissient.com/v1/sandbox/funding/credit \
+      -H "Authorization: Bearer $FISSIENT_KEY" \
+      -H "Content-Type: application/json" \
+      -d '{
+        "user_id": "usr_01M761XYYTGZK43AP9XK0WKQ97",
+        "asset": "usdc",
+        "amount": "1000.00"
+      }'
     ```
+
+    The user now has $1,000.00 of cash.
   </Step>
-  <Step title="Run it">
-    Show the first thing a user does to see it working.
+
+  <Step title="Get a quote">
+    A quote is a firm, all-in price for a trade. It tells the user exactly what they'll pay and what they'll get, and it's valid for about a minute.
 
     ```bash
-    your-cli start
+    curl https://api.fissient.com/v1/quotes \
+      -H "Authorization: Bearer $FISSIENT_KEY" \
+      -H "Content-Type: application/json" \
+      -d '{
+        "user_id": "usr_01M761XYYTGZK43AP9XK0WKQ97",
+        "side": "buy",
+        "instrument": "equity:NVDA",
+        "funding": { "asset": "usdc", "amount": "250.00" }
+      }'
     ```
+
+    ```json Response
+    {
+      "id": "qt_01M761Y4SY3BG7S7114Z4V3EMG",
+      "object": "quote",
+      "expires_at": "2026-11-11T19:40:11.038Z",
+      "side": "buy",
+      "instrument": { "id": "equity:NVDA", "name": "NVIDIA", "symbol": "NVDA" },
+      "input": { "asset": "usdc", "amount": "250", "value_usd": "250.00" },
+      "output": {
+        "asset": "equity:NVDA",
+        "units_estimate": "1.42017204",
+        "units_min": "1.41307077",
+        "effective_price_usd": "176.04",
+        "value_usd": "249.09"
+      },
+      "fees": { "all_in_fee_usd": "0.91", "all_in_bps": 36 }
+    }
+    ```
+
+    Show `fees.all_in_fee_usd` and `output.units_estimate` on your confirmation screen. The fee is the whole cost. Nothing is added later.
+  </Step>
+
+  <Step title="Place the order">
+    Pass the quote's `id` to execute it. Adding `?wait=30` holds the response until the order finishes, so one call places and confirms.
+
+    ```bash
+    curl "https://api.fissient.com/v1/orders?wait=30" \
+      -H "Authorization: Bearer $FISSIENT_KEY" \
+      -H "Content-Type: application/json" \
+      -H "Idempotency-Key: order-8431-0001" \
+      -d '{ "quote_id": "qt_01M761Y4SY3BG7S7114Z4V3EMG" }'
+    ```
+
+    ```json Response
+    {
+      "id": "ord_01M761Y4TV5PH23YVNCTDW63W1",
+      "object": "order",
+      "status": "completed",
+      "side": "buy",
+      "instrument": "equity:NVDA",
+      "input": { "asset": "usdc", "amount": "250", "value_usd": "250.00" },
+      "output": { "asset": "equity:NVDA", "units": "1.42017204", "value_usd": "249.09" },
+      "effective_price_usd": "176.04",
+      "fees": { "all_in_fee_usd": "0.91" },
+      "completed_at": "2026-11-11T19:39:11.695Z"
+    }
+    ```
+
+    When `status` is `completed`, the user owns the shares.
+  </Step>
+
+  <Step title="Read the portfolio">
+    ```bash
+    curl https://api.fissient.com/v1/users/usr_01M761XYYTGZK43AP9XK0WKQ97/portfolio \
+      -H "Authorization: Bearer $FISSIENT_KEY"
+    ```
+
+    ```json Response
+    {
+      "object": "portfolio",
+      "summary": {
+        "total_value_usd": "999.13",
+        "net_deposits_usd": "1000.00",
+        "total_return_usd": "-0.87",
+        "display": { "currency": "BRL", "total_value": "5549.07" }
+      },
+      "positions": [
+        { "instrument": "usd", "name": "US Dollar", "value_usd": "750.00" },
+        {
+          "instrument": "equity:NVDA",
+          "name": "NVIDIA",
+          "units": "1.42017204",
+          "value_usd": "249.13",
+          "cost_basis_usd": "250.00",
+          "unrealized_pnl_usd": "-0.87"
+        }
+      ]
+    }
+    ```
+
+    One call gives you the total, the cash and each holding, in dollars and in the user's own currency.
   </Step>
 </Steps>
 
-<Tip>
-  Give people a way to get help. This could be a link to a support page, a chat with a customer support agent, or a forum for your product.
+## What you just did
 
-  Example: Need help? Reach out to us at [support@yourcompany.com](mailto:support@yourcompany.com).
-</Tip>
+You created a user, gave them cash, priced a trade and executed it. Along the way you never chose where NVIDIA was bought, converted a currency or paid a transaction fee. The quote's single fee covered all of it.
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card title="Fund accounts" icon="wallet" href="/guides/fund-accounts">
+    How real money gets in and out.
+  </Card>
+  <Card title="Order types" icon="list-check" href="/guides/order-types">
+    Limit, stop and take-profit orders.
+  </Card>
+  <Card title="Listen for events" icon="bell" href="/guides/events">
+    Know when an order settles or a deposit arrives.
+  </Card>
+  <Card title="Handle errors" icon="triangle-exclamation" href="/api-reference/errors">
+    Every refusal has a code your app can act on.
+  </Card>
+</CardGroup>

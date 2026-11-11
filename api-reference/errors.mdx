@@ -1,0 +1,179 @@
+---
+title: "Errors"
+description: "Every error has a type, a stable code and a message, and often a hint about what to do next."
+---
+
+Fissient uses standard HTTP status codes. `2xx` means success, `4xx` means the request was refused for a reason given in the body, and `5xx` means something went wrong on our side.
+
+## The error object
+
+```json
+{
+  "error": {
+    "type": "policy_limit",
+    "code": "max_order_exceeded",
+    "message": "Order of $900.00 exceeds the user's max order size of $500.00.",
+    "hint": "The user's policy caps order size; quote less, or raise max_order_usd with a full key.",
+    "reasons": [
+      {
+        "code": "max_order_exceeded",
+        "message": "Order of $900.00 exceeds the user's max order size of $500.00."
+      }
+    ],
+    "request_id": "req_074914b9658848a482c9"
+  }
+}
+```
+
+<ResponseField name="type" type="string">
+  The category of error. Use it for broad handling. See the table below.
+</ResponseField>
+<ResponseField name="code" type="string">
+  The exact constraint that was hit. Stable, and safe to branch on.
+</ResponseField>
+<ResponseField name="message" type="string">
+  A description for developers. The wording can change, so don't parse it.
+</ResponseField>
+<ResponseField name="hint" type="string">
+  What to do next. Present on common errors.
+</ResponseField>
+<ResponseField name="reasons" type="object[]">
+  For eligibility and policy refusals, every reason that applied, each with a `code` and `message`.
+</ResponseField>
+<ResponseField name="details" type="object">
+  Structured data about the error, such as `issues` for validation failures or `candidates` for an ambiguous instrument.
+</ResponseField>
+<ResponseField name="request_id" type="string">
+  The id of the request. Include it when you contact support.
+</ResponseField>
+
+## Error types
+
+| Type | Status | Meaning |
+| --- | --- | --- |
+| `invalid_request` | `400` | The request is malformed or a parameter is invalid. |
+| `authentication_error` | `401` | The API key is missing or invalid. |
+| `permission_denied` | `403` | The key isn't allowed to do this. |
+| `not_found` | `404` | The object doesn't exist, or isn't visible to this key. |
+| `conflict` | `409` | The request conflicts with the current state. |
+| `not_eligible` | `422` | The user isn't allowed to make this trade. |
+| `policy_limit` | `422` | A guardrail on the user refused it. |
+| `insufficient_funds` | `422` | The user doesn't have enough cash or units. |
+| `quote_error` | `422` | The trade can't be priced or executed as requested. |
+| `rate_limited` | `429` | Too many requests. |
+| `internal_error` | `500` | Something went wrong on our side. |
+| `service_unavailable` | `503` | A dependency is temporarily unavailable. Retry shortly. |
+
+## Common codes
+
+<AccordionGroup>
+  <Accordion title="Requests">
+    | Code | Meaning |
+    | --- | --- |
+    | `validation_failed` | One or more fields are invalid. `details.issues` lists each `path` and `message`. |
+    | `invalid_json` | The body isn't valid JSON. |
+    | `invalid_amount` | An amount isn't a positive decimal string. |
+    | `funding_required` | A buy was requested without `funding`. |
+    | `unsupported_funding_asset` | The funding asset isn't `usdc`, `usdt` or `eurc`. |
+    | `instrument_not_found` | No such instrument. `details.suggestions` may list close matches. |
+    | `ambiguous_asset` | The name matches several instruments. Retry with an id from `details.candidates`. |
+    | `user_already_exists` | A user with this `partner_user_ref` already exists. |
+  </Accordion>
+
+  <Accordion title="Eligibility">
+    | Code | Meaning |
+    | --- | --- |
+    | `us_person` | US residents and nationals aren't supported. |
+    | `country_excluded` | The instrument isn't offered in the user's country. |
+    | `nationality_excluded` | The instrument isn't offered to the user's nationality. |
+    | `partner_country_not_enabled` | Your account isn't enabled for the user's country. |
+    | `investor_type_not_allowed` | The instrument is for professional investors only. |
+    | `kyc_not_attested` | You haven't attested the user's identity. |
+    | `instrument_sell_only` | The instrument can be sold but not bought. |
+    | `instrument_halted` | Trading is paused. |
+    | `account_sanctioned` | The account failed sanctions screening. |
+    | `destination_sanctioned` | A withdrawal destination failed sanctions screening. |
+  </Accordion>
+
+  <Accordion title="Guardrails">
+    | Code | Meaning |
+    | --- | --- |
+    | `max_order_exceeded` | The order is above the user's `max_order_usd`. |
+    | `approval_required` | The order is above the approval threshold and must be placed by the user. |
+    | `invalid_leverage` | The leverage is above what's allowed for this user or market. |
+  </Accordion>
+
+  <Accordion title="Funds">
+    | Code | Meaning |
+    | --- | --- |
+    | `insufficient_funds` | Not enough cash. `details.required` gives the amount needed. |
+    | `no_position` | The user doesn't hold this instrument. |
+    | `insufficient_units` | The user holds fewer units than the sell asks for. |
+    | `withdrawal_too_small` | The withdrawal is below the minimum. |
+  </Accordion>
+
+  <Accordion title="Quotes and orders">
+    | Code | Meaning |
+    | --- | --- |
+    | `order_too_small` | Below the instrument's `liquidity.min_order_usd`. |
+    | `cost_limit_exceeded` | The all-in cost is above your `max_cost_bps`. |
+    | `price_impact_too_high` | The order is too large for current liquidity. Try a smaller amount. |
+    | `no_route` | The trade can't be filled right now. Try another amount, or later. |
+    | `price_unavailable` | No current price. Retry shortly. |
+    | `quote_expired` | The quote is older than its `expires_at`. Create a new one. |
+    | `quote_already_used` | The quote already has an order. Its id is in `details.order_id`. |
+    | `quote_dry_run` | The quote was a preview. Create one without `dry_run`. |
+    | `order_not_cancelable` | The order has already executed or finished. |
+    | `order_not_awaiting_approval` | The order isn't waiting for approval. |
+    | `approval_expired` | The approval window passed. |
+  </Accordion>
+
+  <Accordion title="Idempotency and limits">
+    | Code | Meaning |
+    | --- | --- |
+    | `idempotency_key_reused` | The key was already used with a different request. |
+    | `idempotency_in_progress` | The first request with this key is still running. Retry shortly. |
+    | `rate_limited` | Slow down. See `Retry-After`. |
+    | `too_many_streams` | The key already has five event streams open. |
+  </Accordion>
+</AccordionGroup>
+
+## Handling errors
+
+Branch on `code` for cases you handle specifically, fall back to `type`, and treat anything unknown as a generic failure.
+
+```javascript
+const res = await fetch("https://api.fissient.com/v1/quotes", { method: "POST", headers, body });
+
+if (!res.ok) {
+  const { error } = await res.json();
+
+  switch (error.code) {
+    case "quote_expired":
+      return refreshQuote();
+    case "max_order_exceeded":
+      return show("That's above your order limit.");
+    case "insufficient_funds":
+      return show("You don't have enough cash for this. Add money and try again.");
+  }
+
+  if (error.type === "not_eligible") return show("This isn't available in your country.");
+  if (res.status >= 500 || res.status === 429) return retryLater();
+
+  console.error(error.request_id, error.code, error.message);
+  return show("We couldn't complete this. Nothing was traded. Please try again.");
+}
+```
+
+<Tip>
+  Write the messages your users see yourself. `message` and `hint` are written for developers and agents.
+</Tip>
+
+## What to retry
+
+| Situation | Retry? |
+| --- | --- |
+| `5xx`, `429`, timeouts, dropped connections | Yes, with backoff and the same [`Idempotency-Key`](/api-reference/idempotency). |
+| `409 idempotency_in_progress` | Yes, after a short wait. |
+| `409 quote_expired` | Create a new quote, then place a new order. |
+| Other `4xx` | No. Fix the request first. |

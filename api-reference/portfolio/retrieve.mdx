@@ -1,0 +1,201 @@
+---
+title: "Retrieve a portfolio"
+api: "GET /v1/users/{id}/portfolio"
+description: "Returns everything a user holds, what it's worth, and how it has performed."
+---
+
+One normalized view across every instrument, in US dollars and the user's display currency. See [Portfolio](/concepts/portfolio).
+
+## Path parameters
+
+<ParamField path="id" type="string" required>
+  The user's id.
+</ParamField>
+
+## Query parameters
+
+<ParamField query="currency" type="string">
+  Three-letter currency for display values, such as `MXN`. Defaults to the user's `display_currency`.
+</ParamField>
+
+## The portfolio object
+
+<ResponseField name="object" type="string">
+  Always `portfolio`.
+</ResponseField>
+<ResponseField name="user_id" type="string">
+  The user the portfolio belongs to.
+</ResponseField>
+<ResponseField name="as_of" type="string">
+  When the snapshot was taken.
+</ResponseField>
+<ResponseField name="summary" type="object">
+  Totals across every position.
+
+  <Expandable title="properties" defaultOpen>
+    <ResponseField name="total_value_usd" type="string">
+      What everything is worth now, cash included.
+    </ResponseField>
+    <ResponseField name="net_deposits_usd" type="string">
+      Deposits minus withdrawals.
+    </ResponseField>
+    <ResponseField name="total_return_usd" type="string">
+      Total value minus net deposits. The all-time result, after fees.
+    </ResponseField>
+    <ResponseField name="total_return_pct" type="string">
+      The same result as a percentage. `"-0.16"` means -0.16%.
+    </ResponseField>
+    <ResponseField name="total_principal_usd" type="string">
+      What the user currently has invested, at cost.
+    </ResponseField>
+    <ResponseField name="total_yield_earned_usd" type="string">
+      Interest earned on savings and yield instruments.
+    </ResponseField>
+    <ResponseField name="total_unrealized_pnl_usd" type="string">
+      Gain or loss on current holdings.
+    </ResponseField>
+    <ResponseField name="total_realized_pnl_usd" type="string">
+      Gain or loss locked in by selling.
+    </ResponseField>
+    <ResponseField name="display" type="object">
+      The headline numbers in the display currency: `currency`, `fx_rate`, `total_value`, `total_yield_earned`, `total_unrealized_pnl` and `total_return`.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+<ResponseField name="positions" type="object[]">
+  One entry per holding, cash included.
+
+  <Expandable title="properties" defaultOpen>
+    <ResponseField name="instrument" type="string">
+      The instrument id. Cash is `usd`.
+    </ResponseField>
+    <ResponseField name="name" type="string">
+      The display name.
+    </ResponseField>
+    <ResponseField name="asset_class" type="string">
+      The instrument's asset class.
+    </ResponseField>
+    <ResponseField name="units" type="string">
+      How many units the user holds.
+    </ResponseField>
+    <ResponseField name="available_units" type="string">
+      For cash: units not reserved by open orders.
+    </ResponseField>
+    <ResponseField name="price_usd" type="string">
+      Current price per unit.
+    </ResponseField>
+    <ResponseField name="value_usd" type="string">
+      Current value.
+    </ResponseField>
+    <ResponseField name="value_display" type="string">
+      Current value in the display currency.
+    </ResponseField>
+    <ResponseField name="cost_basis_usd" type="string">
+      What the user paid for the holding.
+    </ResponseField>
+    <ResponseField name="unrealized_pnl_usd" type="string">
+      Gain or loss against cost basis.
+    </ResponseField>
+    <ResponseField name="unrealized_pnl_pct" type="string">
+      The same, as a percentage.
+    </ResponseField>
+    <ResponseField name="realized_pnl_usd" type="string">
+      Gain or loss already locked in on this instrument.
+    </ResponseField>
+    <ResponseField name="principal_usd" type="string">
+      For yield instruments: the amount deposited.
+    </ResponseField>
+    <ResponseField name="yield_earned_usd" type="string">
+      For yield instruments: interest earned so far.
+    </ResponseField>
+    <ResponseField name="current_apy" type="string">
+      For yield instruments: the rate being earned now.
+    </ResponseField>
+    <ResponseField name="leveraged" type="object">
+      Present when the user has a [leveraged position](/guides/leverage) on this instrument.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+<ResponseField name="home_wallet" type="object | null">
+  The user's linked wallet and its balance, if one is linked. Not included in the totals.
+</ResponseField>
+
+<RequestExample>
+  ```bash cURL
+  curl https://api.fissient.com/v1/users/usr_01M761XYYTGZK43AP9XK0WKQ97/portfolio \
+    -H "Authorization: Bearer $FISSIENT_KEY"
+  ```
+</RequestExample>
+
+<ResponseExample>
+  ```json 200
+  {
+    "object": "portfolio",
+    "user_id": "usr_01M761XYYTGZK43AP9XK0WKQ97",
+    "as_of": "2026-11-11T19:39:25.157Z",
+    "summary": {
+      "total_value_usd": "998.45",
+      "total_principal_usd": "999.68",
+      "total_yield_earned_usd": "0.00",
+      "total_unrealized_pnl_usd": "-1.23",
+      "total_realized_pnl_usd": "0.00",
+      "net_deposits_usd": "1000.00",
+      "total_return_usd": "-1.55",
+      "total_return_pct": "-0.16",
+      "display": {
+        "currency": "BRL",
+        "fx_rate": "5.5539",
+        "total_value": "5545.27",
+        "total_yield_earned": "0.00",
+        "total_unrealized_pnl": "-6.86",
+        "total_return": "-8.63"
+      }
+    },
+    "positions": [
+      {
+        "instrument": "usd",
+        "name": "US Dollar",
+        "symbol": "USD",
+        "category": "cash",
+        "asset_class": "cash",
+        "units": "350",
+        "available_units": "350",
+        "price_usd": "1",
+        "value_usd": "350.00",
+        "value_display": "1943.87"
+      },
+      {
+        "instrument": "savings:usd",
+        "name": "Dollar Savings",
+        "symbol": "USD",
+        "category": "savings",
+        "asset_class": "lending_yield",
+        "units": "289.76148493",
+        "price_usd": "1.03423",
+        "value_usd": "299.68",
+        "principal_usd": "299.68",
+        "cost_basis_usd": "300.00",
+        "yield_earned_usd": "0.00",
+        "current_apy": "0.0547",
+        "value_display": "1664.39"
+      },
+      {
+        "instrument": "equity:NVDA",
+        "name": "NVIDIA",
+        "symbol": "NVDA",
+        "category": "stocks",
+        "asset_class": "equity",
+        "units": "1.42017204",
+        "price_usd": "175.425",
+        "value_usd": "249.13",
+        "cost_basis_usd": "250.00",
+        "unrealized_pnl_usd": "-0.87",
+        "unrealized_pnl_pct": "-0.35",
+        "realized_pnl_usd": "0.00",
+        "value_display": "1383.67"
+      }
+    ],
+    "home_wallet": null
+  }
+  ```
+</ResponseExample>

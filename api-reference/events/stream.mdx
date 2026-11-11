@@ -1,0 +1,60 @@
+---
+title: "Stream events"
+api: "GET /v1/events"
+description: "A live stream of your events over Server-Sent Events."
+---
+
+The stream delivers the same events as webhooks, without you hosting a receiver. It suits local development, scripts and agents.
+
+The response is `text/event-stream` and stays open. Each message has:
+
+- `id`: the event's id
+- `event`: the event type, such as `order.updated`
+- `data`: the event as JSON
+
+Without a cursor, the stream starts from now. A comment line is sent every 15 seconds to keep the connection alive. Each API key can hold up to five streams at once. A sixth returns `429 too_many_streams`.
+
+## Query parameters
+
+<ParamField query="after" type="string">
+  Resume after this event id. You can send the `Last-Event-ID` header instead, which `EventSource` clients do automatically when they reconnect.
+</ParamField>
+
+<RequestExample>
+  ```bash cURL
+  curl -N https://api.fissient.com/v1/events \
+    -H "Authorization: Bearer $FISSIENT_KEY"
+  ```
+
+  ```javascript Node.js
+  const res = await fetch("https://api.fissient.com/v1/events", {
+    headers: { Authorization: `Bearer ${process.env.FISSIENT_KEY}` },
+  });
+
+  const decoder = new TextDecoder();
+  let buffer = "";
+
+  for await (const chunk of res.body) {
+    buffer += decoder.decode(chunk, { stream: true });
+    const messages = buffer.split("\n\n");
+    buffer = messages.pop();
+
+    for (const message of messages) {
+      const data = message.split("\n").find((line) => line.startsWith("data: "));
+      if (data) handle(JSON.parse(data.slice(6)));
+    }
+  }
+  ```
+</RequestExample>
+
+<ResponseExample>
+  ```text 200
+  event: funding.received
+  data: {"id":"evt_01M761XZ16XGQN3QPZNYSR9KW9","type":"funding.received","created_at":"2026-11-11T19:39:05.123Z","data":{"id":"fund_01M761XZ148N0NEWXRDEM56E2P","object":"funding_transaction","direction":"deposit","status":"completed","asset":"usdc","amount":"1000","value_usd":"1000.00"}}
+  id: evt_01M761XZ16XGQN3QPZNYSR9KW9
+
+  event: order.updated
+  data: {"id":"evt_01M761Y4TZAHZ90HR5FRZ1567V","type":"order.updated","created_at":"2026-11-11T19:39:11.067Z","data":{"id":"ord_01M761Y4TV5PH23YVNCTDW63W1","object":"order","status":"routing","instrument":"equity:NVDA","side":"buy"}}
+  id: evt_01M761Y4TZAHZ90HR5FRZ1567V
+  ```
+</ResponseExample>

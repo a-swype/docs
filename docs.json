@@ -1,72 +1,168 @@
 {
   "$schema": "https://mintlify.com/docs.json",
   "theme": "mint",
-  "name": "Mintlify Starter Kit",
+  "name": "Fissient",
+  "description": "One API to let your users invest and earn: stocks, gold, dollar savings and crypto, with a normalized portfolio and built-in guardrails.",
   "colors": {
-    "primary": "#16A34A",
-    "light": "#07C983",
-    "dark": "#15803D"
+    "primary": "#3B5BDB",
+    "light": "#91A7FF",
+    "dark": "#364FC7"
   },
   "favicon": "/favicon.svg",
-  "navigation": {
-    "pages": [
-      {
-        "group": "Getting Started",
-        "pages": [
-          "index",
-          "quickstart"
-        ]
-      }
-    ],
-    "global": {
-      "anchors": [
-        {
-          "anchor": "Documentation",
-          "href": "https://mintlify.com/docs",
-          "icon": "book-open-cover"
-        },
-        {
-          "anchor": "Blog",
-          "href": "https://mintlify.com/blog",
-          "icon": "newspaper"
-        }
-      ]
-    }
-  },
   "logo": {
     "light": "/logo/light.svg",
     "dark": "/logo/dark.svg"
   },
-  "navbar": {
-    "links": [
-      {
-        "label": "Support",
-        "href": "mailto:support@mintlify.com"
+  "api": {
+    "mdx": {
+      "server": "https://api.fissient.com",
+      "auth": {
+        "method": "bearer"
       }
-    ],
-    "primary": {
-      "type": "button",
-      "label": "Dashboard",
-      "href": "https://app.mintlify.com"
+    },
+    "playground": {
+      "display": "none"
     }
   },
-  "contextual": {
-    "options": [
-      "copy",
-      "view",
-      "chatgpt",
-      "claude",
-      "perplexity",
-      "mcp",
-      "cursor",
-      "vscode"
+  "navigation": {
+    "tabs": [
+      {
+        "tab": "Guides",
+        "groups": [
+          {
+            "group": "Get started",
+            "pages": ["index", "quickstart", "concepts/how-it-works"]
+          },
+          {
+            "group": "Core concepts",
+            "pages": [
+              "concepts/users",
+              "concepts/instruments",
+              "concepts/cash-and-funding",
+              "concepts/quotes-and-orders",
+              "concepts/portfolio",
+              "concepts/eligibility",
+              "concepts/guardrails"
+            ]
+          },
+          {
+            "group": "Build",
+            "pages": [
+              "guides/fund-accounts",
+              "guides/order-types",
+              "guides/savings",
+              "guides/leverage",
+              "guides/approvals",
+              "guides/portfolio-screen",
+              "guides/events"
+            ]
+          },
+          {
+            "group": "AI agents",
+            "pages": ["agents/overview", "agents/tools"]
+          },
+          {
+            "group": "Ship",
+            "pages": ["guides/testing", "guides/go-live"]
+          }
+        ]
+      },
+      {
+        "tab": "API reference",
+        "groups": [
+          {
+            "group": "Overview",
+            "pages": [
+              "api-reference/introduction",
+              "api-reference/authentication",
+              "api-reference/errors",
+              "api-reference/idempotency"
+            ]
+          },
+          {
+            "group": "Users",
+            "pages": [
+              "api-reference/users/create",
+              "api-reference/users/retrieve",
+              "api-reference/users/eligibility",
+              "api-reference/users/policy",
+              "api-reference/users/link-wallet"
+            ]
+          },
+          {
+            "group": "Instruments",
+            "pages": [
+              "api-reference/instruments/list",
+              "api-reference/instruments/retrieve",
+              "api-reference/instruments/search"
+            ]
+          },
+          {
+            "group": "Quotes",
+            "pages": ["api-reference/quotes/create"]
+          },
+          {
+            "group": "Orders",
+            "pages": [
+              "api-reference/orders/create",
+              "api-reference/orders/retrieve",
+              "api-reference/orders/list",
+              "api-reference/orders/cancel",
+              "api-reference/orders/approve"
+            ]
+          },
+          {
+            "group": "Portfolio",
+            "pages": [
+              "api-reference/portfolio/retrieve",
+              "api-reference/portfolio/history",
+              "api-reference/portfolio/activity"
+            ]
+          },
+          {
+            "group": "Funding",
+            "pages": [
+              "api-reference/funding/deposit-instructions",
+              "api-reference/funding/withdraw"
+            ]
+          },
+          {
+            "group": "Events",
+            "pages": [
+              "api-reference/events/create-webhook-endpoint",
+              "api-reference/events/stream"
+            ]
+          },
+          {
+            "group": "API keys",
+            "pages": [
+              "api-reference/api-keys/create",
+              "api-reference/api-keys/list",
+              "api-reference/api-keys/revoke"
+            ]
+          },
+          {
+            "group": "Account ownership",
+            "pages": [
+              "api-reference/account/register-key",
+              "api-reference/account/retrieve-key"
+            ]
+          },
+          {
+            "group": "Sandbox",
+            "pages": [
+              "api-reference/sandbox/credit",
+              "api-reference/sandbox/complete-deposit"
+            ]
+          }
+        ]
+      }
     ]
   },
-  "footer": {
-    "socials": {
-      "x": "https://x.com/mintlify",
-      "github": "https://github.com/mintlify",
-      "linkedin": "https://linkedin.com/company/mintlify"
-    }
+  "contextual": {
+    "options": ["copy", "view", "chatgpt", "claude", "perplexity", "mcp", "cursor", "vscode"]
+  },
+  "search": {
+    "prompt": "Search the docs..."
   }
 }

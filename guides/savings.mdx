@@ -1,0 +1,92 @@
+---
+title: "Offer savings and yield"
+description: "Let users earn on their dollars, with principal and interest reported separately."
+---
+
+Yield instruments turn an idle dollar balance into one that earns. Users deposit and withdraw in dollars, and the portfolio shows what they've put in and what they've earned.
+
+## The instruments
+
+| Instrument | What the user earns from |
+| --- | --- |
+| `savings:usd` Dollar Savings | Lending to over-collateralized borrowers. Variable rate. |
+| `us-treasuries` | Short-term US Treasury bills. Variable rate. |
+
+[List instruments](/api-reference/instruments/list) with `asset_class=lending_yield` or `asset_class=treasury_yield` to see everything available, with current rates.
+
+## Show the rate
+
+```bash
+curl https://api.fissient.com/v1/instruments/savings:usd \
+  -H "Authorization: Bearer $FISSIENT_KEY"
+```
+
+```json
+{
+  "id": "savings:usd",
+  "name": "Dollar Savings",
+  "yield": { "type": "variable", "apy": "0.0547", "as_of": "2026-11-11T19:39:07.381Z" },
+  "liquidity": { "buy_settlement": "instant", "sell_settlement": "instant", "min_order_usd": "1.00" }
+}
+```
+
+`yield.apy` is the net annual rate the user earns, after our fee. Display `0.0547` as 5.47%.
+
+<Warning>
+  Rates are variable. Say so next to the number, and show the instrument's `risks` before a user's first deposit. Yield isn't guaranteed and these aren't insured bank deposits.
+</Warning>
+
+## Deposit into savings
+
+A deposit is a buy.
+
+```bash
+curl https://api.fissient.com/v1/quotes \
+  -H "Authorization: Bearer $FISSIENT_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "user_id": "usr_01M761XYYTGZK43AP9XK0WKQ97",
+    "side": "buy",
+    "instrument": "savings:usd",
+    "funding": { "asset": "usdc", "amount": "300.00" }
+  }'
+```
+
+Then [place the order](/api-reference/orders/create) with the quote's id. For Dollar Savings, each deposit goes to whichever option is paying the best net rate at that moment. The user just sees Dollar Savings.
+
+## Show what they've earned
+
+The savings position separates the two numbers users care about:
+
+```json
+{
+  "instrument": "savings:usd",
+  "name": "Dollar Savings",
+  "value_usd": "304.12",
+  "principal_usd": "300.00",
+  "yield_earned_usd": "4.12",
+  "current_apy": "0.0547"
+}
+```
+
+"$300.00 deposited, $4.12 earned" comes straight from the response. Interest accrues continuously, so `value_usd` rises between reads.
+
+For a chart, [portfolio history](/api-reference/portfolio/history) includes `cumulative_yield_usd` at each point.
+
+## Withdraw from savings
+
+A withdrawal is a sell. Use `units: "all"` to take everything out.
+
+```bash
+curl https://api.fissient.com/v1/quotes \
+  -H "Authorization: Bearer $FISSIENT_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "user_id": "usr_01M761XYYTGZK43AP9XK0WKQ97",
+    "side": "sell",
+    "instrument": "savings:usd",
+    "units": "all"
+  }'
+```
+
+The quote's `output.value_usd` is what the user receives. `settlement_estimate` tells you how long it takes. Most withdrawals are instant, but they depend on available liquidity, so read the estimate before promising a time.

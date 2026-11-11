@@ -1,0 +1,64 @@
+---
+title: "Link a wallet"
+api: "PUT /v1/users/{id}/home-wallet"
+description: "Links the wallet a user already has in your app, for one-step funding and automatic payouts."
+---
+
+Use this if your app already holds a wallet for each user. Once linked, buys can be funded from that wallet and sells pay back into it. See [Fund accounts](/guides/fund-accounts#use-a-linked-wallet).
+
+The address is screened when you link it. A sanctioned address is refused with `home_wallet_sanctioned`. Calling this again replaces the linked wallet.
+
+This call needs a secret key.
+
+## Path parameters
+
+<ParamField path="id" type="string" required>
+  The user's id.
+</ParamField>
+
+## Body
+
+<ParamField body="chain" type="string" required>
+  The network the wallet is on: `ethereum`, `base`, `arbitrum`, `polygon` or `solana`.
+</ParamField>
+
+<ParamField body="address" type="string" required>
+  The wallet's address.
+</ParamField>
+
+<ParamField body="default_asset" type="string" required>
+  The currency the wallet holds: `usdc`, `usdt` or `eurc`. Payouts to the wallet use it.
+</ParamField>
+
+## Returns
+
+The updated [user object](/api-reference/users/retrieve), with `linked_home_wallet` set.
+
+<RequestExample>
+  ```bash cURL
+  curl -X PUT https://api.fissient.com/v1/users/usr_01M7620GH63MP2X635PXX2WQJP/home-wallet \
+    -H "Authorization: Bearer $FISSIENT_KEY" \
+    -H "Content-Type: application/json" \
+    -d '{
+      "chain": "base",
+      "address": "0xfB6916095ca1df60bB79Ce92cE3Ea74c37c5d359",
+      "default_asset": "usdc"
+    }'
+  ```
+</RequestExample>
+
+<ResponseExample>
+  ```json 200
+  {
+    "id": "usr_01M7620GH63MP2X635PXX2WQJP",
+    "object": "user",
+    "partner_user_ref": "user_9000",
+    "status": "active",
+    "linked_home_wallet": {
+      "chain": "base",
+      "address": "0xfB6916095ca1df60bB79Ce92cE3Ea74c37c5d359",
+      "default_asset": "usdc"
+    }
+  }
+  ```
+</ResponseExample>

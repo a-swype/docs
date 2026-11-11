@@ -1,0 +1,128 @@
+---
+title: "Order types"
+description: "Market, limit, stop, stop-limit and take-profit orders on any instrument."
+---
+
+A market order trades now, at the quoted price. The other four types wait for a price and execute automatically when it's met.
+
+| `order_type` | Triggers when | Then |
+| --- | --- | --- |
+| `market` | Immediately | Executes the quote. |
+| `limit` | The price reaches `limit_price_usd`: at or below it for a buy, at or above it for a sell | Fills at the limit or better. Otherwise it keeps waiting. |
+| `stop` | The price moves against the user to `trigger_price_usd` | Executes at the market price. This is a stop loss. |
+| `stop_limit` | The price crosses `trigger_price_usd` | Becomes a limit order at `limit_price_usd`. |
+| `take_profit` | The price moves in the user's favor to `trigger_price_usd` | Executes at the market price. |
+
+## Placing a market order
+
+Create a [quote](/api-reference/quotes/create), then pass its id:
+
+```bash
+curl "https://api.fissient.com/v1/orders?wait=30" \
+  -H "Authorization: Bearer $FISSIENT_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{ "quote_id": "qt_01M761Y4SY3BG7S7114Z4V3EMG" }'
+```
+
+## Placing a limit order
+
+Limit and stop orders don't use a quote. Describe the trade and the price directly.
+
+```bash Buy gold if it drops to $3,800
+curl https://api.fissient.com/v1/orders \
+  -H "Authorization: Bearer $FISSIENT_KEY" \
+  -H "Content-Type: application/json" \
+  -H "Idempotency-Key: limit-8431-0001" \
+  -d '{
+    "user_id": "usr_01M761XYYTGZK43AP9XK0WKQ97",
+    "instrument": "gold",
+    "side": "buy",
+    "order_type": "limit",
+    "limit_price_usd": "3800.00",
+    "funding": { "asset": "usdc", "amount": "50.00" }
+  }'
+```
+
+```json Response
+{
+  "id": "ord_01M761YF1AWJXAFAT35AMA04PM",
+  "object": "order",
+  "status": "open",
+  "order_type": "limit",
+  "limit_price_usd": "3800.00",
+  "time_in_force": "gtc",
+  "expires_at": "2027-02-09T19:39:21.513Z",
+  "side": "buy",
+  "instrument": "gold",
+  "input": { "asset": "usdc", "amount": "50", "value_usd": "50.00" }
+}
+```
+
+The order is `open`, and the $50.00 is reserved so it can't be spent twice. A limit order never fills at a worse price than its limit.
+
+## Protecting a position
+
+A stop loss and a take profit are both sell orders on something the user already holds.
+
+<CodeGroup>
+  ```bash Take profit
+  curl https://api.fissient.com/v1/orders \
+    -H "Authorization: Bearer $FISSIENT_KEY" \
+    -H "Content-Type: application/json" \
+    -d '{
+      "user_id": "usr_01M761XYYTGZK43AP9XK0WKQ97",
+      "instrument": "equity:NVDA",
+      "side": "sell",
+      "order_type": "take_profit",
+      "trigger_price_usd": "220.00",
+      "units": "all"
+    }'
+  ```
+
+  ```bash Stop loss
+  curl https://api.fissient.com/v1/orders \
+    -H "Authorization: Bearer $FISSIENT_KEY" \
+    -H "Content-Type: application/json" \
+    -d '{
+      "user_id": "usr_01M761XYYTGZK43AP9XK0WKQ97",
+      "instrument": "equity:NVDA",
+      "side": "sell",
+      "order_type": "stop",
+      "trigger_price_usd": "150.00",
+      "units": "all"
+    }'
+  ```
+</CodeGroup>
+
+The units are reserved while the order is open.
+
+## How long orders last
+
+| `time_in_force` | Lifetime |
+| --- | --- |
+| `gtc` (default) | Good till canceled, up to 90 days. |
+| `day` | 24 hours. |
+
+An order that reaches `expires_at` without triggering becomes `expired`, and its reserved funds or units are released.
+
+## Listing and canceling
+
+```bash
+# A user's open orders
+curl "https://api.fissient.com/v1/users/usr_01M761XYYTGZK43AP9XK0WKQ97/orders?status=open" \
+  -H "Authorization: Bearer $FISSIENT_KEY"
+
+# Cancel one
+curl -X POST https://api.fissient.com/v1/orders/ord_01M761YF1AWJXAFAT35AMA04PM/cancel \
+  -H "Authorization: Bearer $FISSIENT_KEY"
+```
+
+Canceling releases what was reserved. Only `open` orders, and orders waiting for approval, can be canceled.
+
+## What to tell users about stops
+
+Prices are checked every few seconds. In a fast market, the price can move past a stop before it executes, so a stop order can fill at a worse price than its trigger. That's true of stop orders everywhere, and it's worth a line in your interface: a stop limits losses, but it doesn't guarantee an exact price.
+
+<Tip>
+  The [activity feed](/api-reference/portfolio/activity) describes open orders in plain language, for example "Take profit: sell equity:NVDA if the price rises to $220.00 (waiting for the price)". You can use the `order_type` and price fields to write your own.
+</Tip>

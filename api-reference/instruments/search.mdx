@@ -1,0 +1,99 @@
+---
+title: "Search assets"
+api: "GET /v1/tokens/search"
+description: "Finds any tradable asset by name, symbol or address."
+---
+
+Search covers the catalog and a much wider range of crypto tokens outside it. Catalog instruments come first. Every result has an `id` you can pass as `instrument` to a [quote](/api-reference/quotes/create).
+
+Nothing is filtered out of the results. Instead, each result carries `flags` that warn about risk, and flagged results rank lower. Show the flags to users before they buy.
+
+## Query parameters
+
+<ParamField query="q" type="string" required>
+  A name, symbol or address, such as `bonk`. A pasted address resolves exactly.
+</ParamField>
+
+<ParamField query="limit" type="integer">
+  How many results to return, from 1 to 50.
+</ParamField>
+
+## Returns
+
+<ResponseField name="object" type="string">
+  Always `list`.
+</ResponseField>
+<ResponseField name="query" type="string">
+  The search you sent.
+</ResponseField>
+<ResponseField name="data" type="object[]">
+  Matching assets.
+
+  <Expandable title="properties" defaultOpen>
+    <ResponseField name="id" type="string">
+      Pass this as `instrument` to quotes and orders.
+    </ResponseField>
+    <ResponseField name="symbol" type="string">
+      The asset's symbol.
+    </ResponseField>
+    <ResponseField name="name" type="string">
+      The asset's name.
+    </ResponseField>
+    <ResponseField name="logo_url" type="string | null">
+      An image for the asset.
+    </ResponseField>
+    <ResponseField name="price_usd" type="string | null">
+      Current price.
+    </ResponseField>
+    <ResponseField name="liquidity_usd" type="number | null">
+      How much can be traded without moving the price much. Low values mean expensive trades.
+    </ResponseField>
+    <ResponseField name="volume_24h_usd" type="number | null">
+      Trading volume over the last day.
+    </ResponseField>
+    <ResponseField name="market_cap_usd" type="number | null">
+      Total market value.
+    </ResponseField>
+    <ResponseField name="verified" type="boolean">
+      Whether the asset has been verified as genuine.
+    </ResponseField>
+    <ResponseField name="curated" type="boolean">
+      `true` if the asset is part of the catalog.
+    </ResponseField>
+    <ResponseField name="flags" type="string[]">
+      Warnings: `unverified`, `low_liquidity`, or `impersonates:<id>` for an asset that looks like a catalog instrument but isn't. Flags inform. They don't block a trade.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<RequestExample>
+  ```bash cURL
+  curl "https://api.fissient.com/v1/tokens/search?q=bonk&limit=2" \
+    -H "Authorization: Bearer $FISSIENT_KEY"
+  ```
+</RequestExample>
+
+<ResponseExample>
+  ```json 200
+  {
+    "object": "list",
+    "query": "bonk",
+    "data": [
+      {
+        "id": "bonk",
+        "object": "token",
+        "symbol": "Bonk",
+        "name": "Bonk",
+        "logo_url": "https://...",
+        "price_usd": "0.000002814585576788624",
+        "liquidity_usd": 5900824.59,
+        "volume_24h_usd": 685298.26,
+        "market_cap_usd": 247667487.3,
+        "verified": true,
+        "curated": true,
+        "flags": []
+      }
+    ]
+  }
+  ```
+</ResponseExample>

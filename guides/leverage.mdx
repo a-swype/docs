@@ -1,0 +1,153 @@
+---
+title: "Leverage and short positions"
+description: "Let users take leveraged long or short positions on the same instruments."
+---
+
+Leverage is a way of trading an instrument, not a separate instrument. Bitcoin is `btc` whether the user buys it outright or opens a 3× position on it.
+
+<Warning>
+  Leveraged trading can lose the user's entire margin quickly. It's regulated differently from ordinary investing in most countries. Confirm it's permitted for your users before you turn it on, and show the risks clearly.
+</Warning>
+
+## Which instruments support it
+
+Each instrument reports what's available:
+
+```json
+{
+  "id": "btc",
+  "trading": { "spot": true, "leverage": true },
+  "leverage": { "max": 40, "allowed_max": 3 }
+}
+```
+
+`leverage.max` is the market's limit. `leverage.allowed_max` is the limit for this user, after their [leverage cap](/concepts/guardrails).
+
+## Open a position
+
+Add `leverage` and `direction` to a quote. The `funding.amount` is the margin: the most the user can lose.
+
+```bash
+curl https://api.fissient.com/v1/quotes \
+  -H "Authorization: Bearer $FISSIENT_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "user_id": "usr_01M761XYYTGZK43AP9XK0WKQ97",
+    "side": "buy",
+    "instrument": "btc",
+    "leverage": 3,
+    "direction": "long",
+    "funding": { "asset": "usdc", "amount": "100.00" }
+  }'
+```
+
+The quote adds a `position` object and a risk warning:
+
+```json
+{
+  "id": "qt_01M761YGRPWRFJFGQG5YZPQ8R3",
+  "position": {
+    "direction": "long",
+    "leverage": 3,
+    "size": "0.00397",
+    "notional_usd": "295.46",
+    "entry_price_usd": "74423.00",
+    "liquidation_price_usd": "50243.38",
+    "margin_usd": "99.56"
+  },
+  "fees": { "all_in_fee_usd": "0.44" },
+  "funding_rate_hourly": "0.0000082353",
+  "warnings": [
+    {
+      "code": "leverage_risk",
+      "message": "At 3× a 33% move against you loses the whole $99.56 margin."
+    }
+  ]
+}
+```
+
+Show `liquidation_price_usd` and the warning before the user confirms. Then place the order with the quote's id.
+
+### How leverage and direction combine
+
+| Request | Result |
+| --- | --- |
+| No `leverage`, or `leverage: 1`, long | An ordinary purchase. The user owns the asset. |
+| `leverage: 2` or more | A leveraged position. |
+| `direction: "short"` | A short position, at any leverage. |
+
+## The position in the portfolio
+
+A leveraged position appears on the instrument's own line, in a `leveraged` object:
+
+```json
+{
+  "instrument": "btc",
+  "name": "Bitcoin",
+  "value_usd": "99.63",
+  "leveraged": {
+    "direction": "long",
+    "leverage": 3,
+    "size": "0.00397",
+    "entry_price_usd": "74423.00",
+    "mark_price_usd": "74440.5",
+    "margin_usd": "99.56",
+    "unrealized_pnl_usd": "0.07",
+    "unrealized_pnl_pct": "0.07",
+    "liquidation_price_usd": "50243.38",
+    "value_usd": "99.63"
+  }
+}
+```
+
+Use `leveraged.value_usd` as what the position is worth to the user: their margin plus or minus the result so far.
+
+## Liquidation
+
+If the price reaches `liquidation_price_usd`, the position is closed and the margin is lost. The user can't lose more than their margin. Keep the liquidation price visible wherever you show the position.
+
+## Holding costs
+
+Leveraged positions pay or receive a small funding rate every hour, shown as `funding_rate_hourly`. It's why a leveraged position held for a long time doesn't track the asset's price exactly.
+
+## Close a position
+
+Quote with `close: true`, then place the order. Proceeds go to the user's cash balance.
+
+```bash
+curl https://api.fissient.com/v1/quotes \
+  -H "Authorization: Bearer $FISSIENT_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "user_id": "usr_01M761XYYTGZK43AP9XK0WKQ97",
+    "side": "sell",
+    "instrument": "btc",
+    "close": true,
+    "direction": "long"
+  }'
+```
+
+The closing quote's `position.pnl_usd` shows the result the user is about to lock in.
+
+## Stop losses on positions
+
+Attach a stop or take profit with a [conditional order](/guides/order-types) that closes the position:
+
+```bash
+curl https://api.fissient.com/v1/orders \
+  -H "Authorization: Bearer $FISSIENT_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "user_id": "usr_01M761XYYTGZK43AP9XK0WKQ97",
+    "instrument": "btc",
+    "side": "sell",
+    "order_type": "stop",
+    "trigger_price_usd": "65000.00",
+    "close": true,
+    "direction": "long"
+  }'
+```
+
+## Limiting leverage
+
+Set `max_leverage` in the user's [policy](/api-reference/users/policy). A quote above the cap is refused.

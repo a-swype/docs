@@ -1,0 +1,149 @@
+---
+title: "Fund accounts"
+description: "Get money into a user's account and back out again."
+---
+
+A user needs cash before they can buy. This guide covers deposits, withdrawals, and the linked-wallet flow for apps whose users already hold digital dollars.
+
+## Deposit to the account
+
+<Steps>
+  <Step title="Get the user's deposit addresses">
+    ```bash
+    curl https://api.fissient.com/v1/funding/deposits \
+      -H "Authorization: Bearer $FISSIENT_KEY" \
+      -H "Content-Type: application/json" \
+      -d '{ "user_id": "usr_01M761XYYTGZK43AP9XK0WKQ97", "asset": "usdc" }'
+    ```
+
+    ```json Response
+    {
+      "object": "deposit_instructions",
+      "user_id": "usr_01M761XYYTGZK43AP9XK0WKQ97",
+      "asset": "usdc",
+      "addresses": [
+        { "network": "base", "address": "0x5aAeb6053F3E94C9b9A09f33669435E7Ef1BeAed" },
+        { "network": "ethereum", "address": "0x5aAeb6053F3E94C9b9A09f33669435E7Ef1BeAed" },
+        { "network": "solana", "address": "4Nd1mBQtrMJVYVfKf2PJy9NZUZdTAsp7D4xWLs4gDB4T" }
+      ]
+    }
+    ```
+
+    The addresses belong to this user and don't change. You can fetch them once and store them.
+  </Step>
+
+  <Step title="Show the right address">
+    Ask the user which network they're sending from, then show that address. Sending on a network that isn't listed can lose the funds, so don't let users type a network in freehand.
+  </Step>
+
+  <Step title="Wait for the deposit">
+    When the money arrives you receive a `funding.received` event:
+
+    ```json
+    {
+      "id": "evt_01M761XZ16XGQN3QPZNYSR9KW9",
+      "type": "funding.received",
+      "data": {
+        "id": "fund_01M761XZ148N0NEWXRDEM56E2P",
+        "object": "funding_transaction",
+        "user_id": "usr_01M761XYYTGZK43AP9XK0WKQ97",
+        "direction": "deposit",
+        "status": "completed",
+        "asset": "usdc",
+        "amount": "1000",
+        "value_usd": "1000.00"
+      }
+    }
+    ```
+
+    The cash is available to trade as soon as you get the event.
+  </Step>
+</Steps>
+
+<Tip>
+  If your company moves money for users from its own treasury, the flow is the same. Send to the user's deposit address and wait for the event.
+</Tip>
+
+## Withdraw
+
+```bash
+curl https://api.fissient.com/v1/funding/withdrawals \
+  -H "Authorization: Bearer $FISSIENT_KEY" \
+  -H "Content-Type: application/json" \
+  -H "Idempotency-Key: withdrawal-8431-0001" \
+  -d '{
+    "user_id": "usr_01M761XYYTGZK43AP9XK0WKQ97",
+    "asset": "usdc",
+    "amount": "25.00",
+    "chain": "base",
+    "destination": { "type": "crypto", "address": "0xfB6916095ca1df60bB79Ce92cE3Ea74c37c5d359" }
+  }'
+```
+
+The response is a funding transaction with `status: "pending"`. It becomes `completed` when the transfer is confirmed, or `failed` if it couldn't be sent, in which case the money is back in the user's balance.
+
+Three things to know:
+
+- **Only secret keys can withdraw.** Agent keys can't move money out of an account.
+- **Destinations are screened.** A sanctioned address is refused with `destination_sanctioned`.
+- **Always send an idempotency key.** A retried withdrawal with the same key is never sent twice.
+
+To withdraw money that's invested, sell first. Proceeds land in the cash balance, and you withdraw from there.
+
+## Use a linked wallet
+
+If your app already holds a wallet for each user, link it once. After that, the user's money can flow between the two without them copying addresses.
+
+<Steps>
+  <Step title="Link the wallet">
+    ```bash
+    curl -X PUT https://api.fissient.com/v1/users/usr_01M7620GH63MP2X635PXX2WQJP/home-wallet \
+      -H "Authorization: Bearer $FISSIENT_KEY" \
+      -H "Content-Type: application/json" \
+      -d '{
+        "chain": "base",
+        "address": "0xfB6916095ca1df60bB79Ce92cE3Ea74c37c5d359",
+        "default_asset": "usdc"
+      }'
+    ```
+
+    The address is screened when you link it.
+  </Step>
+
+  <Step title="Place a buy">
+    Quote and order as usual. If the user doesn't have enough cash in their account, the order is accepted and waits:
+
+    ```json
+    {
+      "id": "ord_01M7620P0RSGWBP55Y46SVDC8B",
+      "object": "order",
+      "status": "awaiting_funding",
+      "funding_instructions": {
+        "funding_id": "fund_01M7620P0TBYG100GE9331FY4Z",
+        "asset": "usdc",
+        "amount": "50",
+        "chain": "base",
+        "from_address": "0xfB6916095ca1df60bB79Ce92cE3Ea74c37c5d359",
+        "to_address": "0xdbF03B407c01E7cD3CBea99509d93f8DDDC8C6FB"
+      }
+    }
+    ```
+  </Step>
+
+  <Step title="Send the funds">
+    Transfer exactly `amount` of `asset` from the linked wallet to `to_address`. When it arrives the order continues by itself and you receive `order.updated` events as it progresses.
+
+    An order that isn't funded within 30 minutes expires. Nothing is charged.
+  </Step>
+</Steps>
+
+### Selling back to the linked wallet
+
+Once a wallet is linked, sells send their proceeds to it by default. To keep proceeds in the account's cash balance instead, set `sweep_to_home_wallet: false` on the quote.
+
+## Testing
+
+In the sandbox, skip real transfers:
+
+- [`POST /v1/sandbox/funding/credit`](/api-reference/sandbox/credit) adds cash instantly.
+- [`POST /v1/sandbox/funding/{id}/complete`](/api-reference/sandbox/complete-deposit) simulates a pending transfer arriving, such as the one an `awaiting_funding` order is waiting for.

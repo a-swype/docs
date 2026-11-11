@@ -1,0 +1,91 @@
+---
+title: "Eligibility"
+description: "What each user may buy is decided on our servers, with a reason for every refusal."
+---
+
+Financial products have rules about who can hold them. Those rules differ by instrument and by country. Fissient applies them for you on every quote and every order, so an ineligible trade can't happen by mistake.
+
+## How it's decided
+
+Eligibility is computed for one user and one instrument, from:
+
+- the user's **country of residence** and **nationality**
+- the user's **investor type** (`retail` or `professional`)
+- whether you've **attested their identity** (`kyc_attested`)
+- the **instrument's own rules** and current status
+- the **countries your account is enabled for**
+
+The result is deterministic. The same user and instrument always give the same answer until one of those inputs changes.
+
+## Checking eligibility
+
+```bash
+curl "https://api.fissient.com/v1/users/usr_01M761XYYTGZK43AP9XK0WKQ97/eligibility?instruments=equity:NVDA,gold" \
+  -H "Authorization: Bearer $FISSIENT_KEY"
+```
+
+```json
+{
+  "object": "eligibility",
+  "user_id": "usr_01M761XYYTGZK43AP9XK0WKQ97",
+  "data": [
+    {
+      "instrument": "equity:NVDA",
+      "eligible": true,
+      "buy_allowed": true,
+      "sell_allowed": true,
+      "hold_only": false,
+      "reasons": [],
+      "required_actions": []
+    }
+  ]
+}
+```
+
+You can also pass `user_id` when you [list instruments](/api-reference/instruments/list). Each instrument then includes that user's eligibility, which lets you build a catalog screen in one call.
+
+## Reason codes
+
+When a user can't buy something, `reasons` says why.
+
+| Code | Meaning |
+| --- | --- |
+| `us_person` | The user is a US resident or national. |
+| `country_excluded` | The instrument isn't offered in the user's country of residence. |
+| `nationality_excluded` | The instrument isn't offered to the user's nationality. |
+| `partner_country_not_enabled` | Your account isn't enabled for the user's country. |
+| `investor_type_not_allowed` | The instrument is limited to professional investors. |
+| `kyc_not_attested` | You haven't attested this user's identity. |
+| `instrument_sell_only` | The instrument can currently be sold but not bought. |
+| `instrument_halted` | Trading in the instrument is paused. |
+| `account_sanctioned` | The account failed sanctions screening. |
+
+Each reason also has a `message` in plain language.
+
+## Users can always get out
+
+If the rules change for an instrument a user already holds, the user becomes `hold_only`: `buy_allowed` is `false` and `sell_allowed` stays `true`. They can't add to the position, but they can always sell it.
+
+## Refusals on quotes and orders
+
+You don't have to check eligibility before every trade. If you quote something the user can't buy, the request fails with a `422` and the same reasons:
+
+```json
+{
+  "error": {
+    "type": "not_eligible",
+    "code": "country_excluded",
+    "message": "The user's residence country is excluded for this instrument.",
+    "reasons": [
+      { "code": "country_excluded", "message": "The user's residence country is excluded for this instrument." }
+    ],
+    "request_id": "req_53569989a15d4a04a003"
+  }
+}
+```
+
+Eligibility is checked again when the order is placed and when a held order is approved.
+
+## Staying up to date
+
+Eligibility can change when rules or an instrument's status change. Read it fresh when you build a screen that depends on it, and don't cache it for long. Every quote and order checks it again regardless.

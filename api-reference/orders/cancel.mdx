@@ -1,0 +1,44 @@
+---
+title: "Cancel an order"
+api: "POST /v1/orders/{id}/cancel"
+description: "Cancels an open order, or declines one waiting for approval."
+---
+
+Canceling releases the funds or units the order had reserved.
+
+You can cancel an order that is `open` or `needs_approval`. An order that has started executing or has already finished returns `409 order_not_cancelable`.
+
+## Path parameters
+
+<ParamField path="id" type="string" required>
+  The order's id.
+</ParamField>
+
+## Returns
+
+The [order object](/api-reference/orders/retrieve), with `status: "canceled"`.
+
+<RequestExample>
+  ```bash cURL
+  curl -X POST https://api.fissient.com/v1/orders/ord_01M761YF1AWJXAFAT35AMA04PM/cancel \
+    -H "Authorization: Bearer $FISSIENT_KEY"
+  ```
+</RequestExample>
+
+<ResponseExample>
+  ```json 200
+  {
+    "id": "ord_01M761YF1AWJXAFAT35AMA04PM",
+    "object": "order",
+    "status": "canceled",
+    "order_type": "limit",
+    "limit_price_usd": "3800.00",
+    "side": "buy",
+    "instrument": "gold",
+    "input": { "asset": "usdc", "amount": "50", "value_usd": "50.00" },
+    "output": null,
+    "created_at": "2026-11-11T19:39:21.513Z",
+    "completed_at": null
+  }
+  ```
+</ResponseExample>

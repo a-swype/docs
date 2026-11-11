@@ -1,0 +1,231 @@
+---
+title: "MCP tools"
+description: "Every tool the MCP server exposes to an agent."
+---
+
+The MCP server offers 13 tools. Read tools work with any key. Tools that change something need an agent or secret key and run inside the user's [guardrails](/concepts/guardrails).
+
+| Tool | Purpose | Changes state |
+| --- | --- | :---: |
+| [`list_instruments`](#list_instruments) | Browse the catalog | |
+| [`get_instrument`](#get_instrument) | One instrument in detail | |
+| [`search_tokens`](#search_tokens) | Find any tradable asset by name | |
+| [`check_eligibility`](#check_eligibility) | What the user may buy | |
+| [`get_portfolio`](#get_portfolio) | Holdings and value | |
+| [`get_portfolio_history`](#get_portfolio_history) | Value over time | |
+| [`get_activity`](#get_activity) | The user's ledger | |
+| [`create_quote`](#create_quote) | Price a trade | |
+| [`place_order`](#place_order) | Execute a quote | Yes |
+| [`place_limit_or_stop_order`](#place_limit_or_stop_order) | Order that waits for a price | Yes |
+| [`get_order`](#get_order) | Check an order | |
+| [`list_orders`](#list_orders) | A user's orders | |
+| [`cancel_order`](#cancel_order) | Cancel an open order | Yes |
+
+## Discovering
+
+### list_instruments
+
+Returns the catalog as one compact line per instrument, so the whole list fits in an agent's context.
+
+<ParamField body="asset_class" type="string">
+  One of `cash`, `treasury_yield`, `equity`, `gold`, `crypto`, `lending_yield`, `perp`.
+</ParamField>
+<ParamField body="query" type="string">
+  Case-insensitive match on id, name or symbol, such as `nvidia` or `SPY`.
+</ParamField>
+<ParamField body="user_id" type="string">
+  Adds a column saying whether this user may buy each instrument.
+</ParamField>
+
+```json Result
+{
+  "object": "list",
+  "count": 1,
+  "columns": "id | name | asset_class | price_usd | apy | fee_bps | live | max_leverage | buy",
+  "rows": ["gold | Gold | gold | 3983.15 | - | 25 | yes | 25 | yes"]
+}
+```
+
+### get_instrument
+
+Full detail for one instrument: price or rate, settlement times, risks and disclosures.
+
+<ParamField body="instrument" type="string" required>
+  An instrument id such as `equity:SPY`, or a symbol or name that matches exactly one instrument.
+</ParamField>
+
+### search_tokens
+
+Finds assets by name, symbol or address, catalog instruments first. Each result's `id` can be passed straight to `create_quote`. Results may carry `flags` (`unverified`, `low_liquidity`, `impersonates:<id>`). These are warnings, not blocks. The agent should tell the user about them.
+
+<ParamField body="query" type="string" required>
+  A name, symbol or address.
+</ParamField>
+<ParamField body="limit" type="integer">
+  1 to 50. Defaults to 10.
+</ParamField>
+
+### check_eligibility
+
+Whether a user may buy or sell, with reason codes. See [Eligibility](/concepts/eligibility).
+
+<ParamField body="user_id" type="string" required />
+<ParamField body="instruments" type="string[]">
+  Instrument ids. Leave out to check everything.
+</ParamField>
+
+## Reading the account
+
+### get_portfolio
+
+Total value, principal, yield earned, profit and loss, and every position. Same shape as the [REST portfolio](/api-reference/portfolio/retrieve).
+
+<ParamField body="user_id" type="string" required />
+<ParamField body="currency" type="string">
+  Three-letter display currency override, such as `BRL`.
+</ParamField>
+
+### get_portfolio_history
+
+A time series of value, net deposits and cumulative yield.
+
+<ParamField body="user_id" type="string" required />
+<ParamField body="period" type="string" default="1M">
+  `1D`, `1W`, `1M`, `1Y` or `ALL`.
+</ParamField>
+<ParamField body="currency" type="string" />
+
+### get_activity
+
+Deposits, buys, sells and withdrawals, newest first.
+
+<ParamField body="user_id" type="string" required />
+<ParamField body="limit" type="integer">
+  1 to 200.
+</ParamField>
+
+## Trading
+
+### create_quote
+
+Prices a buy or sell, all in. The quote expires in about a minute. The result's `next` hint tells the agent to call `place_order` with the quote id.
+
+<ParamField body="user_id" type="string" required />
+<ParamField body="side" type="string" required>
+  `buy` or `sell`.
+</ParamField>
+<ParamField body="instrument" type="string" required>
+  An id from `list_instruments` or `search_tokens`.
+</ParamField>
+<ParamField body="funding_asset" type="string">
+  Buys: what the user pays with. `usdc`, `usdt` or `eurc`.
+</ParamField>
+<ParamField body="amount" type="string">
+  Buys: how much of `funding_asset` to spend, as a decimal string.
+</ParamField>
+<ParamField body="units" type="string">
+  Sells: how many units, or `"all"`.
+</ParamField>
+<ParamField body="payout_asset" type="string">
+  Sells: the currency to receive.
+</ParamField>
+<ParamField body="dry_run" type="boolean">
+  Preview only. The quote can't be executed.
+</ParamField>
+<ParamField body="leverage" type="integer">
+  Opens a leveraged position. `funding_asset` and `amount` are the margin. Capped by the user's policy.
+</ParamField>
+<ParamField body="direction" type="string">
+  `long` or `short`, for leveraged positions.
+</ParamField>
+<ParamField body="close" type="boolean">
+  Closes an open leveraged position.
+</ParamField>
+<ParamField body="max_cost_bps" type="integer">
+  Refuses the quote, and any fill, that would cost more than this.
+</ParamField>
+
+### place_order
+
+Executes a quote. It's safe to retry: placing the same quote again returns its existing order instead of trading twice.
+
+<ParamField body="quote_id" type="string" required>
+  The `qt_` id from `create_quote`.
+</ParamField>
+<ParamField body="wait_seconds" type="integer">
+  Hold for up to 60 seconds until the order completes or fails.
+</ParamField>
+
+If the order is above the user's approval threshold it returns `needs_approval`, with a `next` hint explaining that the user must confirm in your app.
+
+### place_limit_or_stop_order
+
+Places an order that executes when a price is met. See [Order types](/guides/order-types).
+
+<ParamField body="user_id" type="string" required />
+<ParamField body="instrument" type="string" required />
+<ParamField body="side" type="string" required>
+  `buy` or `sell`.
+</ParamField>
+<ParamField body="order_type" type="string" required>
+  `limit`, `stop`, `stop_limit` or `take_profit`.
+</ParamField>
+<ParamField body="limit_price_usd" type="string" />
+<ParamField body="trigger_price_usd" type="string" />
+<ParamField body="funding_asset" type="string">
+  Buys. Reserved when the order is placed.
+</ParamField>
+<ParamField body="amount" type="string" />
+<ParamField body="units" type="string">
+  Sells.
+</ParamField>
+<ParamField body="time_in_force" type="string">
+  `gtc` or `day`.
+</ParamField>
+<ParamField body="idempotency_key" type="string">
+  A repeat call with the same key returns the first order instead of placing another.
+</ParamField>
+
+An agent can't place a resting order above the user's approval threshold. The user has to place those.
+
+### get_order
+
+An order's status, execution price and output.
+
+<ParamField body="order_id" type="string" required />
+<ParamField body="wait_seconds" type="integer">
+  Hold until the order settles instead of polling.
+</ParamField>
+
+### list_orders
+
+A user's orders, newest first.
+
+<ParamField body="user_id" type="string" required />
+<ParamField body="status" type="string">
+  For example `open`, `completed` or `failed`.
+</ParamField>
+
+### cancel_order
+
+Cancels an open limit or stop order, or withdraws one that's waiting for approval. Reserved funds or units are released.
+
+<ParamField body="order_id" type="string" required />
+
+## Errors
+
+A refused call returns a tool error whose text is JSON:
+
+```json
+{
+  "error": {
+    "type": "quote_error",
+    "code": "order_too_small",
+    "message": "...",
+    "hint": "Increase the amount above the instrument's `liquidity.min_order_usd`.",
+    "reasons": []
+  }
+}
+```
+
+The codes are the same as the REST API's. See [Errors](/api-reference/errors).

@@ -1,0 +1,60 @@
+---
+title: "List instruments"
+api: "GET /v1/instruments"
+description: "Returns the catalog with live prices and rates."
+---
+
+Pass `user_id` to include that user's eligibility on each instrument, which gives you everything a catalog screen needs in one call.
+
+## Query parameters
+
+<ParamField query="asset_class" type="string">
+  Filter by class: `equity`, `gold`, `crypto`, `lending_yield`, `treasury_yield` or `cash`.
+</ParamField>
+
+<ParamField query="user_id" type="string">
+  Adds an `eligibility` object to each instrument for this user.
+</ParamField>
+
+## Returns
+
+A list of [instrument objects](/api-reference/instruments/retrieve).
+
+<RequestExample>
+  ```bash cURL
+  curl "https://api.fissient.com/v1/instruments?asset_class=gold" \
+    -H "Authorization: Bearer $FISSIENT_KEY"
+  ```
+</RequestExample>
+
+<ResponseExample>
+  ```json 200
+  {
+    "object": "list",
+    "data": [
+      {
+        "id": "gold",
+        "object": "instrument",
+        "name": "Gold",
+        "symbol": "GOLD",
+        "category": "gold",
+        "asset_class": "gold",
+        "tagline": "The price of physical gold, per troy ounce",
+        "summary": "Each unit represents one fine troy ounce of gold held in custody by the issuer.",
+        "price": { "usd": "3983.15", "as_of": "2026-11-11T19:39:05.846Z" },
+        "yield": null,
+        "liquidity": {
+          "buy_settlement": "instant",
+          "sell_settlement": "instant",
+          "min_order_usd": "5.00",
+          "max_instant_order_usd": "10000.00"
+        },
+        "fees": { "all_in_execution_bps": 25, "annual_platform_bps": 0 },
+        "status": "active",
+        "trading": { "spot": true, "leverage": true },
+        "leverage": { "max": 25, "allowed_max": 25 }
+      }
+    ]
+  }
+  ```
+</ResponseExample>

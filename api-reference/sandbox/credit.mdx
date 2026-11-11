@@ -1,0 +1,59 @@
+---
+title: "Credit a user"
+api: "POST /v1/sandbox/funding/credit"
+description: "Adds test cash to a sandbox user instantly."
+---
+
+Sandbox only. A live key gets `403 sandbox_only`.
+
+The credit behaves like a real deposit: the cash balance goes up and a `funding.received` event is sent.
+
+## Body
+
+<ParamField body="user_id" type="string" required>
+  The sandbox user to credit.
+</ParamField>
+
+<ParamField body="asset" type="string" required>
+  `usdc`, `usdt` or `eurc`.
+</ParamField>
+
+<ParamField body="amount" type="string" required>
+  How much to add, as a decimal string.
+</ParamField>
+
+## Returns
+
+A completed [funding transaction](/api-reference/funding/withdraw#the-funding-transaction-object).
+
+<RequestExample>
+  ```bash cURL
+  curl https://api.fissient.com/v1/sandbox/funding/credit \
+    -H "Authorization: Bearer $FISSIENT_KEY" \
+    -H "Content-Type: application/json" \
+    -d '{
+      "user_id": "usr_01M761XYYTGZK43AP9XK0WKQ97",
+      "asset": "usdc",
+      "amount": "1000.00"
+    }'
+  ```
+</RequestExample>
+
+<ResponseExample>
+  ```json 201
+  {
+    "id": "fund_01M761XZ148N0NEWXRDEM56E2P",
+    "object": "funding_transaction",
+    "user_id": "usr_01M761XYYTGZK43AP9XK0WKQ97",
+    "direction": "deposit",
+    "status": "completed",
+    "asset": "usdc",
+    "amount": "1000",
+    "value_usd": "1000.00",
+    "settled": { "asset": "usdc", "amount": "1000" },
+    "order_id": null,
+    "created_at": "2026-11-11T19:39:05.123Z",
+    "completed_at": "2026-11-11T19:39:05.124Z"
+  }
+  ```
+</ResponseExample>

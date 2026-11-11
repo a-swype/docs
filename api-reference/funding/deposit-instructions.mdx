@@ -1,0 +1,68 @@
+---
+title: "Get deposit instructions"
+api: "POST /v1/funding/deposits"
+description: "Returns the addresses a user can send funds to."
+---
+
+Each user has their own deposit addresses, one per supported network. They don't change, so you can fetch them once and store them.
+
+When a deposit arrives, you receive a `funding.received` [event](/guides/events) and the user's cash balance goes up. See [Fund accounts](/guides/fund-accounts).
+
+## Body
+
+<ParamField body="user_id" type="string" required>
+  The user who is depositing.
+</ParamField>
+
+<ParamField body="asset" type="string" required>
+  The currency being deposited: `usdc`, `usdt` or `eurc`.
+</ParamField>
+
+<ParamField body="chain" type="string">
+  Return only the address for this network: `ethereum`, `base`, `arbitrum`, `polygon` or `solana`.
+</ParamField>
+
+## Returns
+
+<ResponseField name="object" type="string">
+  Always `deposit_instructions`.
+</ResponseField>
+<ResponseField name="user_id" type="string">
+  The user the addresses belong to.
+</ResponseField>
+<ResponseField name="asset" type="string">
+  The currency requested.
+</ResponseField>
+<ResponseField name="addresses" type="object[]">
+  One entry per network, each with a `network` and an `address`.
+</ResponseField>
+
+<Warning>
+  Show the user the address for the network they're actually sending from. Funds sent on a network that isn't listed may not be recoverable.
+</Warning>
+
+<RequestExample>
+  ```bash cURL
+  curl https://api.fissient.com/v1/funding/deposits \
+    -H "Authorization: Bearer $FISSIENT_KEY" \
+    -H "Content-Type: application/json" \
+    -d '{ "user_id": "usr_01M761XYYTGZK43AP9XK0WKQ97", "asset": "usdc" }'
+  ```
+</RequestExample>
+
+<ResponseExample>
+  ```json 201
+  {
+    "object": "deposit_instructions",
+    "user_id": "usr_01M761XYYTGZK43AP9XK0WKQ97",
+    "asset": "usdc",
+    "addresses": [
+      { "network": "ethereum", "address": "0x5aAeb6053F3E94C9b9A09f33669435E7Ef1BeAed" },
+      { "network": "base", "address": "0x5aAeb6053F3E94C9b9A09f33669435E7Ef1BeAed" },
+      { "network": "arbitrum", "address": "0x5aAeb6053F3E94C9b9A09f33669435E7Ef1BeAed" },
+      { "network": "polygon", "address": "0x5aAeb6053F3E94C9b9A09f33669435E7Ef1BeAed" },
+      { "network": "solana", "address": "4Nd1mBQtrMJVYVfKf2PJy9NZUZdTAsp7D4xWLs4gDB4T" }
+    ]
+  }
+  ```
+</ResponseExample>

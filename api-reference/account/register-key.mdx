@@ -1,0 +1,55 @@
+---
+title: "Register your account key"
+api: "PUT /v1/partner/wallet-key"
+description: "Registers the public key that gives you joint control of your users' accounts."
+---
+
+Every user's account is controlled jointly by you and by us. Registering a key establishes your side of that control: your users' accounts remain yours to operate, and neither side can remove the other.
+
+You do this once, before you create live users. Creating a live user without it returns `wallet_key_required`.
+
+Generate a P-256 key pair in your key management system. Keep the private key there, and send the public half here.
+
+<Warning>
+  A registered key can't be replaced by calling this again. A different key returns `409 wallet_key_already_set`. Contact us to rotate it.
+</Warning>
+
+## Body
+
+<ParamField body="public_key" type="string" required>
+  Your P-256 public key, base64-encoded DER (SPKI).
+</ParamField>
+
+## Returns
+
+<ResponseField name="object" type="string">
+  Always `wallet_key`.
+</ResponseField>
+<ResponseField name="public_key" type="string | null">
+  The key you registered.
+</ResponseField>
+
+The response also includes identifiers you'd need to operate users' accounts directly with your key. Most integrations never use them.
+
+<RequestExample>
+  ```bash cURL
+  curl -X PUT https://api.fissient.com/v1/partner/wallet-key \
+    -H "Authorization: Bearer $FISSIENT_KEY" \
+    -H "Content-Type: application/json" \
+    -d '{ "public_key": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAE..." }'
+  ```
+
+  ```bash Generate a key pair
+  openssl ecparam -name prime256v1 -genkey -noout -out private.pem
+  openssl ec -in private.pem -pubout -outform DER | base64
+  ```
+</RequestExample>
+
+<ResponseExample>
+  ```json 200
+  {
+    "object": "wallet_key",
+    "public_key": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAE..."
+  }
+  ```
+</ResponseExample>

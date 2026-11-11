@@ -1,0 +1,76 @@
+---
+title: "Create an API key"
+api: "POST /v1/api-keys"
+description: "Creates an agent or read-only key."
+---
+
+Use a secret key to create restricted keys for agents and dashboards. The new key is created in the same mode as the key you call with: a test key creates test keys, and a live key creates live keys.
+
+The `secret` is returned once, in this response. Store it right away. It can't be retrieved later.
+
+## Body
+
+<ParamField body="scope" type="string" required>
+  `agent` for a key that can trade inside each user's guardrails, or `read` for a key that can only read and quote. See [key types](/api-reference/authentication#key-types).
+</ParamField>
+
+<ParamField body="label" type="string">
+  A name to recognize the key by, up to 100 characters.
+</ParamField>
+
+## Returns
+
+The API key object, plus its `secret`.
+
+<ResponseField name="id" type="string">
+  Unique id, prefixed `key_`. Use it to revoke the key.
+</ResponseField>
+<ResponseField name="object" type="string">
+  Always `api_key`.
+</ResponseField>
+<ResponseField name="scope" type="string">
+  `agent`, `read` or `full`.
+</ResponseField>
+<ResponseField name="prefix" type="string">
+  The first characters of the key, for identifying it in a list.
+</ResponseField>
+<ResponseField name="label" type="string | null">
+  The label you gave it.
+</ResponseField>
+<ResponseField name="livemode" type="boolean">
+  Whether it's a live key.
+</ResponseField>
+<ResponseField name="created_at" type="string">
+  When the key was created.
+</ResponseField>
+<ResponseField name="revoked_at" type="string | null">
+  When the key was revoked, if it has been.
+</ResponseField>
+<ResponseField name="secret" type="string">
+  The key itself. Only present in this response.
+</ResponseField>
+
+<RequestExample>
+  ```bash cURL
+  curl https://api.fissient.com/v1/api-keys \
+    -H "Authorization: Bearer $FISSIENT_KEY" \
+    -H "Content-Type: application/json" \
+    -d '{ "scope": "agent", "label": "assistant" }'
+  ```
+</RequestExample>
+
+<ResponseExample>
+  ```json 201
+  {
+    "id": "key_01M761YWWKJQEEVJXD30308GSX",
+    "object": "api_key",
+    "scope": "agent",
+    "prefix": "ak_test_kSj1",
+    "label": "assistant",
+    "livemode": false,
+    "created_at": "2026-11-11T19:39:35.699Z",
+    "revoked_at": null,
+    "secret": "ak_test_..."
+  }
+  ```
+</ResponseExample>

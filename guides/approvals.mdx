@@ -1,0 +1,74 @@
+---
+title: "Approvals"
+description: "Hold large orders until the user confirms them."
+---
+
+An approval threshold puts a person in the loop for big trades. Orders above it are accepted but don't execute until the user says yes. It's most useful when something other than the user can place orders for them, such as an AI agent or an automated strategy.
+
+## Set the threshold
+
+```bash
+curl -X PUT https://api.fissient.com/v1/users/usr_01M761XYYTGZK43AP9XK0WKQ97/policy \
+  -H "Authorization: Bearer $FISSIENT_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{ "approval_threshold_usd": "200.00" }'
+```
+
+## What happens to an order above it
+
+<Steps>
+  <Step title="The order is held">
+    Placing a $250.00 order returns it with `status: "needs_approval"`. No money has moved.
+
+    ```json
+    {
+      "id": "ord_01M761YW3824SHD130ET4CD0CW",
+      "object": "order",
+      "status": "needs_approval",
+      "side": "buy",
+      "instrument": "gold",
+      "input": { "asset": "usdc", "amount": "250", "value_usd": "250.00" },
+      "fees": { "all_in_fee_usd": "1.15" }
+    }
+    ```
+
+    You also receive an `order.updated` event.
+  </Step>
+
+  <Step title="Ask the user">
+    Show the order in your app: what it buys, how much, and the fee. Send a push notification if the order came from an agent and the user isn't looking at the screen.
+  </Step>
+
+  <Step title="Approve or decline">
+    <CodeGroup>
+      ```bash Approve
+      curl -X POST https://api.fissient.com/v1/orders/ord_01M761YW3824SHD130ET4CD0CW/approve \
+        -H "Authorization: Bearer $FISSIENT_KEY"
+      ```
+
+      ```bash Decline
+      curl -X POST https://api.fissient.com/v1/orders/ord_01M761YW3824SHD130ET4CD0CW/cancel \
+        -H "Authorization: Bearer $FISSIENT_KEY"
+      ```
+    </CodeGroup>
+
+    An approved order moves to `routing` and executes like any other. Eligibility and limits are checked again at that moment.
+  </Step>
+</Steps>
+
+## Rules to rely on
+
+- **Only a secret key can approve.** Call approve from your server, after the user confirms in your authenticated app. An agent key gets `403 agent_key_not_permitted`.
+- **Held orders expire.** An order not approved within 15 minutes becomes `expired`.
+- **Approving twice is safe.** An order that's no longer waiting returns `409 order_not_awaiting_approval`.
+- **The price is rechecked.** If the market has moved past the quote's guaranteed minimum by the time the user approves, the order fails and nothing is traded. Ask the user to try again.
+
+## Combining with a maximum order size
+
+The two limits work together. With `approval_threshold_usd: "200.00"` and `max_order_usd: "500.00"`:
+
+| Order size | Outcome |
+| --- | --- |
+| Up to $200.00 | Executes immediately. |
+| $200.01 to $500.00 | Waits for the user's approval. |
+| Above $500.00 | Refused with `max_order_exceeded`. |

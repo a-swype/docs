@@ -1,0 +1,257 @@
+---
+title: "Create a quote"
+api: "POST /v1/quotes"
+description: "Prices a buy or sell, all in. The quote is valid for about a minute."
+---
+
+A quote checks that the user may make the trade, finds the best price, and returns exactly what they'll pay and receive. Execute it with [Create an order](/api-reference/orders/create).
+
+Creating a quote moves no money. Read-only keys can create quotes.
+
+## Body
+
+<ParamField body="user_id" type="string" required>
+  The user the quote is for.
+</ParamField>
+
+<ParamField body="side" type="string" required>
+  `buy` or `sell`.
+</ParamField>
+
+<ParamField body="instrument" type="string" required>
+  An instrument id such as `equity:NVDA`, an id from [search](/api-reference/instruments/search), or a symbol or name that matches exactly one instrument.
+</ParamField>
+
+<ParamField body="funding" type="object">
+  Required for buys. What the user pays with.
+
+  <Expandable title="properties" defaultOpen>
+    <ParamField body="asset" type="string" required>
+      `usdc`, `usdt` or `eurc`.
+    </ParamField>
+    <ParamField body="amount" type="string" required>
+      How much to spend, as a decimal string.
+    </ParamField>
+  </Expandable>
+</ParamField>
+
+<ParamField body="units" type="string">
+  Required for sells. How many units to sell, or `"all"`.
+</ParamField>
+
+<ParamField body="payout" type="object">
+  For sells. `asset` is the currency to receive: `usdc`, `usdt` or `eurc`.
+</ParamField>
+
+<ParamField body="dry_run" type="boolean" default="false">
+  Returns a preview with a `portfolio_preview` showing totals before and after. A dry-run quote can't be executed.
+</ParamField>
+
+<ParamField body="max_cost_bps" type="integer">
+  A ceiling on the all-in cost, in basis points. Costlier quotes are refused with `cost_limit_exceeded`, and an order that would cost more at execution fails instead of filling.
+</ParamField>
+
+<ParamField body="slippage_bps" type="integer">
+  How far the price may move between quote and execution, from 1 to 500 basis points. It sets `output.units_min`. Defaults to 50.
+</ParamField>
+
+<ParamField body="leverage" type="integer">
+  From 1 to 100. `1`, the default, buys the asset outright. `2` or more opens a [leveraged position](/guides/leverage), with `funding.amount` as the margin.
+</ParamField>
+
+<ParamField body="direction" type="string">
+  `long` or `short`, for leveraged positions.
+</ParamField>
+
+<ParamField body="close" type="boolean">
+  Closes the user's open leveraged position on this instrument.
+</ParamField>
+
+<ParamField body="sweep_to_home_wallet" type="boolean">
+  For sells. Sends proceeds on to the user's [linked wallet](/api-reference/users/link-wallet). Defaults to `true` once a wallet is linked.
+</ParamField>
+
+## The quote object
+
+<ResponseField name="id" type="string">
+  Unique id, prefixed `qt_`.
+</ResponseField>
+<ResponseField name="object" type="string">
+  Always `quote`.
+</ResponseField>
+<ResponseField name="user_id" type="string">
+  The user the quote is for.
+</ResponseField>
+<ResponseField name="expires_at" type="string">
+  When the quote stops being executable.
+</ResponseField>
+<ResponseField name="side" type="string">
+  `buy` or `sell`.
+</ResponseField>
+<ResponseField name="dry_run" type="boolean">
+  Whether this is a preview.
+</ResponseField>
+<ResponseField name="instrument" type="object">
+  The instrument's `id`, `name` and `symbol`.
+</ResponseField>
+<ResponseField name="input" type="object">
+  What the user gives up. For a buy: `asset`, `amount` and `value_usd`. For a sell: `asset`, `units` and `value_usd`. `value_display` repeats the value in the user's currency.
+</ResponseField>
+<ResponseField name="output" type="object">
+  What the user receives.
+
+  <Expandable title="properties" defaultOpen>
+    <ResponseField name="asset" type="string">
+      The instrument for a buy, or the payout currency for a sell.
+    </ResponseField>
+    <ResponseField name="units_estimate" type="string">
+      Expected units.
+    </ResponseField>
+    <ResponseField name="units_min" type="string">
+      The guaranteed minimum. The order fails if it would deliver less.
+    </ResponseField>
+    <ResponseField name="effective_price_usd" type="string">
+      Price per unit, fees included.
+    </ResponseField>
+    <ResponseField name="value_usd" type="string">
+      Value of what's received.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+<ResponseField name="fees" type="object">
+  <Expandable title="properties" defaultOpen>
+    <ResponseField name="all_in_fee_usd" type="string">
+      The complete cost of the trade.
+    </ResponseField>
+    <ResponseField name="all_in_bps" type="number">
+      The same cost in basis points of the trade's value.
+    </ResponseField>
+    <ResponseField name="breakdown" type="object">
+      What the fee is made of: `execution_usd`, `partner_markup_usd` and `network_and_routing_usd`.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+<ResponseField name="settlement_estimate" type="string">
+  How long the order should take, such as `instant`.
+</ResponseField>
+<ResponseField name="funding_method" type="string">
+  Where the money comes from: `wallet_balance` for the user's cash, `position` for a sell, or `home_wallet_deposit` when the order will wait for a transfer from the linked wallet.
+</ResponseField>
+<ResponseField name="position" type="object">
+  Present for leveraged quotes. Direction, leverage, size, entry price, liquidation price and margin.
+</ResponseField>
+<ResponseField name="warnings" type="object[]">
+  Things the user should know before confirming, each with a `code` and `message`.
+</ResponseField>
+<ResponseField name="portfolio_preview" type="object">
+  Present on dry runs. `before` and `after`, each with `total_value_usd`, `cash_value_usd` and `instrument_value_usd`.
+</ResponseField>
+
+<RequestExample>
+  ```bash Buy
+  curl https://api.fissient.com/v1/quotes \
+    -H "Authorization: Bearer $FISSIENT_KEY" \
+    -H "Content-Type: application/json" \
+    -d '{
+      "user_id": "usr_01M761XYYTGZK43AP9XK0WKQ97",
+      "side": "buy",
+      "instrument": "equity:NVDA",
+      "funding": { "asset": "usdc", "amount": "250.00" }
+    }'
+  ```
+
+  ```bash Sell
+  curl https://api.fissient.com/v1/quotes \
+    -H "Authorization: Bearer $FISSIENT_KEY" \
+    -H "Content-Type: application/json" \
+    -d '{
+      "user_id": "usr_01M761XYYTGZK43AP9XK0WKQ97",
+      "side": "sell",
+      "instrument": "equity:NVDA",
+      "units": "all"
+    }'
+  ```
+
+  ```bash Preview
+  curl https://api.fissient.com/v1/quotes \
+    -H "Authorization: Bearer $FISSIENT_KEY" \
+    -H "Content-Type: application/json" \
+    -d '{
+      "user_id": "usr_01M761XYYTGZK43AP9XK0WKQ97",
+      "side": "buy",
+      "instrument": "gold",
+      "dry_run": true,
+      "funding": { "asset": "usdc", "amount": "50.00" }
+    }'
+  ```
+</RequestExample>
+
+<ResponseExample>
+  ```json 201 Buy
+  {
+    "id": "qt_01M761Y4SY3BG7S7114Z4V3EMG",
+    "object": "quote",
+    "user_id": "usr_01M761XYYTGZK43AP9XK0WKQ97",
+    "expires_at": "2026-11-11T19:40:11.038Z",
+    "side": "buy",
+    "dry_run": false,
+    "instrument": { "id": "equity:NVDA", "name": "NVIDIA", "symbol": "NVDA" },
+    "input": {
+      "asset": "usdc",
+      "amount": "250",
+      "value_usd": "250.00",
+      "value_display": { "currency": "BRL", "amount": "1388.48" }
+    },
+    "output": {
+      "asset": "equity:NVDA",
+      "units_estimate": "1.42017204",
+      "units_min": "1.41307077",
+      "effective_price_usd": "176.04",
+      "value_usd": "249.09"
+    },
+    "fees": {
+      "all_in_fee_usd": "0.91",
+      "all_in_bps": 36,
+      "breakdown": {
+        "execution_usd": "0.62",
+        "partner_markup_usd": "0.00",
+        "network_and_routing_usd": "0.28"
+      }
+    },
+    "settlement_estimate": "instant",
+    "funding_method": "wallet_balance",
+    "warnings": []
+  }
+  ```
+
+  ```json 201 Sell
+  {
+    "id": "qt_01M761YK6DQ5A1JJ60P824JJSA",
+    "object": "quote",
+    "side": "sell",
+    "instrument": { "id": "equity:NVDA", "name": "NVIDIA", "symbol": "NVDA" },
+    "input": { "asset": "equity:NVDA", "units": "1.42017204", "value_usd": "249.13" },
+    "output": {
+      "asset": "usdc",
+      "units_estimate": "248.389107",
+      "units_min": "247.147161",
+      "effective_price_usd": "174.90",
+      "value_usd": "248.39"
+    },
+    "fees": { "all_in_fee_usd": "0.74", "all_in_bps": 30 },
+    "settlement_estimate": "instant",
+    "funding_method": "position"
+  }
+  ```
+
+  ```json 422
+  {
+    "error": {
+      "type": "policy_limit",
+      "code": "max_order_exceeded",
+      "message": "Order of $900.00 exceeds the user's max order size of $500.00.",
+      "request_id": "req_074914b9658848a482c9"
+    }
+  }
+  ```
+</ResponseExample>

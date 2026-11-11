@@ -1,0 +1,62 @@
+---
+title: "Set guardrails"
+api: "PUT /v1/users/{id}/policy"
+description: "Sets a user's order limit, approval threshold and leverage cap."
+---
+
+Guardrails apply to every order for the user, from any key. See [Guardrails](/concepts/guardrails).
+
+This call needs a secret key. Agent keys can't change limits.
+
+## Path parameters
+
+<ParamField path="id" type="string" required>
+  The user's id.
+</ParamField>
+
+## Body
+
+<ParamField body="max_order_usd" type="string">
+  The largest single order allowed, in US dollars. Larger orders are refused with `max_order_exceeded`.
+</ParamField>
+
+<ParamField body="approval_threshold_usd" type="string">
+  Orders above this amount wait in `needs_approval` until the user confirms. See [Approvals](/guides/approvals).
+</ParamField>
+
+<ParamField body="max_leverage" type="string">
+  A whole number from 1 to 100. Caps the leverage on leveraged positions. Without it, the cap is each market's own maximum.
+</ParamField>
+
+## Returns
+
+The updated [user object](/api-reference/users/retrieve).
+
+<RequestExample>
+  ```bash cURL
+  curl -X PUT https://api.fissient.com/v1/users/usr_01M761XYYTGZK43AP9XK0WKQ97/policy \
+    -H "Authorization: Bearer $FISSIENT_KEY" \
+    -H "Content-Type: application/json" \
+    -d '{
+      "max_order_usd": "500.00",
+      "approval_threshold_usd": "200.00",
+      "max_leverage": "3"
+    }'
+  ```
+</RequestExample>
+
+<ResponseExample>
+  ```json 200
+  {
+    "id": "usr_01M761XYYTGZK43AP9XK0WKQ97",
+    "object": "user",
+    "partner_user_ref": "user_8431",
+    "status": "active",
+    "policy": {
+      "max_order_usd": "500.00",
+      "approval_threshold_usd": "200.00",
+      "max_leverage": "3"
+    }
+  }
+  ```
+</ResponseExample>

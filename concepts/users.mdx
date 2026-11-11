@@ -1,0 +1,46 @@
+---
+title: "Users"
+description: "A user is one of your customers and the investing account we open for them."
+---
+
+You create one user for each customer who invests through your app. Creating the user opens their account. There's no second sign-up and nothing for the customer to install.
+
+## What you tell us
+
+| Field | Why we need it |
+| --- | --- |
+| `partner_user_ref` | Your own id for this customer. It must be unique, so you can't create the same person twice. |
+| `residence_country` | Decides which instruments they can buy. |
+| `nationality` | Some instruments exclude certain nationalities. |
+| `investor_type` | `retail` or `professional`. Some instruments are professional-only. |
+| `kyc_attested` | Your confirmation that you've verified this person's identity. |
+| `display_currency` | The currency you show them, for example `BRL`. Defaults to `USD`. |
+
+You stay responsible for verifying your customers. We rely on your attestation and screen accounts and withdrawal destinations against sanctions lists.
+
+<Warning>
+  US residents and US nationals can't be created. The request is refused with `not_eligible` and the code `us_person`.
+</Warning>
+
+## Each user has their own account
+
+Holdings are never pooled. Every user's cash and investments sit in an account that belongs to that user alone. This keeps the accounting clean: what one user deposited, earned and withdrew is never mixed with anyone else's.
+
+## Sandbox and live users are separate
+
+A user created with a test key exists only in the sandbox. A live key can't see it, and the reverse is also true. When you go live you create your users again with a live key.
+
+## Guardrails
+
+Each user can carry a `policy`: a maximum order size, an approval threshold and a leverage cap. You can set it when you create the user or change it later. See [Guardrails](/concepts/guardrails).
+
+## Related
+
+<CardGroup cols={2}>
+  <Card title="Create a user" icon="code" href="/api-reference/users/create">
+    API reference
+  </Card>
+  <Card title="Eligibility" icon="shield-check" href="/concepts/eligibility">
+    What a user can buy, and why not
+  </Card>
+</CardGroup>

@@ -1,0 +1,91 @@
+---
+title: "Retrieve portfolio history"
+api: "GET /v1/users/{id}/portfolio/history"
+description: "Returns a time series of portfolio value, ready to chart."
+---
+
+## Path parameters
+
+<ParamField path="id" type="string" required>
+  The user's id.
+</ParamField>
+
+## Query parameters
+
+<ParamField query="period" type="string">
+  `1D`, `1W`, `1M`, `1Y` or `ALL`.
+</ParamField>
+
+<ParamField query="currency" type="string">
+  Three-letter display currency. Defaults to the user's `display_currency`.
+</ParamField>
+
+## Returns
+
+<ResponseField name="object" type="string">
+  Always `portfolio_history`.
+</ResponseField>
+<ResponseField name="user_id" type="string">
+  The user the history belongs to.
+</ResponseField>
+<ResponseField name="period" type="string">
+  The period returned.
+</ResponseField>
+<ResponseField name="currency" type="string">
+  The display currency used.
+</ResponseField>
+<ResponseField name="points" type="object[]">
+  Oldest first.
+
+  <Expandable title="properties" defaultOpen>
+    <ResponseField name="timestamp" type="string">
+      When the point was recorded.
+    </ResponseField>
+    <ResponseField name="value_usd" type="string">
+      Total portfolio value in US dollars.
+    </ResponseField>
+    <ResponseField name="value_display_currency" type="string">
+      Total portfolio value in the display currency.
+    </ResponseField>
+    <ResponseField name="net_deposits_usd" type="string">
+      Deposits minus withdrawals up to this point.
+    </ResponseField>
+    <ResponseField name="cumulative_yield_usd" type="string">
+      Interest earned up to this point.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<RequestExample>
+  ```bash cURL
+  curl "https://api.fissient.com/v1/users/usr_01M761XYYTGZK43AP9XK0WKQ97/portfolio/history?period=1D" \
+    -H "Authorization: Bearer $FISSIENT_KEY"
+  ```
+</RequestExample>
+
+<ResponseExample>
+  ```json 200
+  {
+    "object": "portfolio_history",
+    "user_id": "usr_01M761XYYTGZK43AP9XK0WKQ97",
+    "period": "1D",
+    "currency": "BRL",
+    "points": [
+      {
+        "timestamp": "2026-11-11T19:39:00.000Z",
+        "value_usd": "998.45",
+        "value_display_currency": "5545.27",
+        "net_deposits_usd": "1000.00",
+        "cumulative_yield_usd": "0.00"
+      },
+      {
+        "timestamp": "2026-11-11T19:39:25.211Z",
+        "value_usd": "998.45",
+        "value_display_currency": "5545.27",
+        "net_deposits_usd": "1000.00",
+        "cumulative_yield_usd": "0.00"
+      }
+    ]
+  }
+  ```
+</ResponseExample>

@@ -1,0 +1,150 @@
+---
+title: "Events and webhooks"
+description: "Find out when an order settles, a deposit arrives or a portfolio changes."
+---
+
+Things happen in a user's account after your request returns: an order completes, a deposit lands, a stop triggers. Events tell you about them.
+
+You can receive events two ways. Both deliver the same events.
+
+| | Webhooks | Event stream |
+| --- | --- | --- |
+| How | We `POST` to your URL | You hold open a connection |
+| Good for | Production backends | Local development, scripts, agents |
+| Needs a public URL | Yes | No |
+
+## Event types
+
+| Type | Sent when | `data` is |
+| --- | --- | --- |
+| `order.updated` | An order changes status | The [order](/api-reference/orders/retrieve) |
+| `funding.received` | A deposit arrives | The funding transaction |
+| `portfolio.updated` | A user's holdings change after an order | `user_id` and `order_id` |
+
+Two more types, `eligibility.changed` and `instrument.updated`, are reserved. You can subscribe to them now, but they aren't sent yet. Until they are, read [eligibility](/api-reference/users/eligibility) and [instruments](/api-reference/instruments/list) when you need the current state.
+
+## The event object
+
+```json
+{
+  "id": "evt_01M761Y4TZAHZ90HR5FRZ1567V",
+  "object": "event",
+  "type": "order.updated",
+  "created_at": "2026-11-11T19:39:11.067Z",
+  "livemode": false,
+  "data": {
+    "id": "ord_01M761Y4TV5PH23YVNCTDW63W1",
+    "object": "order",
+    "status": "completed",
+    "user_id": "usr_01M761XYYTGZK43AP9XK0WKQ97",
+    "instrument": "equity:NVDA",
+    "side": "buy"
+  }
+}
+```
+
+## Webhooks
+
+<Steps>
+  <Step title="Register an endpoint">
+    ```bash
+    curl https://api.fissient.com/v1/webhook-endpoints \
+      -H "Authorization: Bearer $FISSIENT_KEY" \
+      -H "Content-Type: application/json" \
+      -d '{
+        "url": "https://example.com/webhooks/fissient",
+        "events": ["order.updated", "funding.received"]
+      }'
+    ```
+
+    ```json Response
+    {
+      "id": "we_01M761YWXSNWT9B06R17TE5F59",
+      "object": "webhook_endpoint",
+      "url": "https://example.com/webhooks/fissient",
+      "events": ["order.updated", "funding.received"],
+      "secret": "whsec_...",
+      "status": "enabled"
+    }
+    ```
+
+    Store the `secret`. You need it to verify signatures. Leave out `events` to receive every type. Live endpoints must use `https`.
+  </Step>
+
+  <Step title="Verify the signature">
+    Every delivery carries a signature header:
+
+    ```text
+    OneAPI-Signature: t=1731353951,v1=5257a869e7ecebeda32affa62cdca3fa51cad7e77a0e56ff536d0ce8e108d8bd
+    ```
+
+    `t` is a Unix timestamp. `v1` is an HMAC-SHA256 of `{t}.{raw request body}`, keyed with your endpoint's secret and hex-encoded. Compute it yourself and compare.
+
+    <CodeGroup>
+      ```javascript Node.js
+      import crypto from "node:crypto";
+
+      function verify(rawBody, header, secret) {
+        const parts = Object.fromEntries(header.split(",").map((p) => p.split("=")));
+        const expected = crypto
+          .createHmac("sha256", secret)
+          .update(`${parts.t}.${rawBody}`)
+          .digest("hex");
+
+        const ok =
+          expected.length === parts.v1.length &&
+          crypto.timingSafeEqual(Buffer.from(expected), Buffer.from(parts.v1));
+        const fresh = Math.abs(Date.now() / 1000 - Number(parts.t)) < 300;
+        return ok && fresh;
+      }
+      ```
+
+      ```python Python
+      import hashlib, hmac, time
+
+      def verify(raw_body: bytes, header: str, secret: str) -> bool:
+          parts = dict(p.split("=", 1) for p in header.split(","))
+          signed = f"{parts['t']}.".encode() + raw_body
+          expected = hmac.new(secret.encode(), signed, hashlib.sha256).hexdigest()
+          fresh = abs(time.time() - int(parts["t"])) < 300
+          return hmac.compare_digest(expected, parts["v1"]) and fresh
+      ```
+    </CodeGroup>
+
+    Use the raw request body, exactly as received. Parsing and re-serializing the JSON changes the bytes and breaks the signature.
+  </Step>
+
+  <Step title="Respond quickly">
+    Return any `2xx` status within 10 seconds. Do slow work after you've responded.
+  </Step>
+</Steps>
+
+### Retries
+
+A delivery that fails or times out is retried up to five times, with increasing delays. Plan for two consequences:
+
+- **You may receive an event more than once.** Record the event `id` and ignore ones you've already handled.
+- **Events can arrive out of order.** For orders, trust the status over the sequence. If you're unsure, fetch the order.
+
+## Event stream
+
+The stream delivers the same events over Server-Sent Events, without a public URL.
+
+```bash
+curl -N https://api.fissient.com/v1/events \
+  -H "Authorization: Bearer $FISSIENT_KEY"
+```
+
+```text
+event: order.updated
+data: {"id":"evt_01M761Y4TZAHZ90HR5FRZ1567V","type":"order.updated","created_at":"2026-11-11T19:39:11.067Z","data":{...}}
+id: evt_01M761Y4TZAHZ90HR5FRZ1567V
+```
+
+The stream starts from now. To pick up where you left off after a disconnect, send the last event id you saw in the `Last-Event-ID` header, or as `?after=`. Standard `EventSource` clients do this for you.
+
+A comment line is sent every 15 seconds to keep the connection open. Each API key can hold up to five streams at once.
+
+## Which should you handle?
+
+At minimum, handle `order.updated`. It tells you when a trade finishes, fails or needs approval, which is what your users are waiting to hear. Add `funding.received` to confirm deposits, and `portfolio.updated` if you cache portfolios.

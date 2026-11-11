@@ -1,0 +1,58 @@
+---
+title: "Guardrails"
+description: "Per-user limits, enforced on our servers for every order from any source."
+---
+
+A guardrail is a limit on what can be done with a user's account. Guardrails live in the user's `policy` and apply to every order, whether it comes from your app, your backend or an AI agent.
+
+All three are optional. A user with an empty policy has no limits beyond their balance.
+
+| Guardrail | What it does |
+| --- | --- |
+| `max_order_usd` | Refuses any single order above this size. |
+| `approval_threshold_usd` | Orders above this size wait for the user to confirm. |
+| `max_leverage` | Caps the leverage on leveraged positions. |
+
+## Setting a policy
+
+```bash
+curl -X PUT https://api.fissient.com/v1/users/usr_01M761XYYTGZK43AP9XK0WKQ97/policy \
+  -H "Authorization: Bearer $FISSIENT_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "max_order_usd": "500.00",
+    "approval_threshold_usd": "200.00",
+    "max_leverage": "3"
+  }'
+```
+
+You can also pass `policy` when you [create the user](/api-reference/users/create). Only a secret key can change a policy. Agent keys can't loosen their own limits.
+
+## Maximum order size
+
+An order above `max_order_usd` is refused when you ask for the quote:
+
+```json
+{
+  "error": {
+    "type": "policy_limit",
+    "code": "max_order_exceeded",
+    "message": "Order of $900.00 exceeds the user's max order size of $500.00.",
+    "hint": "The user's policy caps order size; quote less, or raise max_order_usd with a full key."
+  }
+}
+```
+
+## Approval threshold
+
+An order above `approval_threshold_usd` is accepted but doesn't execute. It waits in `needs_approval` until the user confirms it in your app, and you call [approve](/api-reference/orders/approve) with your secret key. If nobody approves it within 15 minutes, it expires.
+
+This is the control that makes AI agents safe to deploy: an agent can prepare a large trade, but only the user can release it. See [Approvals](/guides/approvals).
+
+## Leverage cap
+
+Leverage is available up to each market's own maximum. Set `max_leverage`, a whole number from 1 to 100, to hold a user below that.
+
+## Why these run on the server
+
+Limits in your app's interface can be bypassed by anything that calls the API directly. Guardrails can't. They're checked where the order executes, so they hold no matter where the request came from.

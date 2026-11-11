@@ -1,0 +1,91 @@
+---
+title: "Check eligibility"
+api: "GET /v1/users/{id}/eligibility"
+description: "Returns which instruments a user may buy and sell, with a reason for each refusal."
+---
+
+See [Eligibility](/concepts/eligibility) for how the result is decided and the full list of reason codes.
+
+## Path parameters
+
+<ParamField path="id" type="string" required>
+  The user's id.
+</ParamField>
+
+## Query parameters
+
+<ParamField query="instruments" type="string">
+  Comma-separated instrument ids, such as `equity:NVDA,gold`. Leave out to check every instrument.
+</ParamField>
+
+## Returns
+
+<ResponseField name="object" type="string">
+  Always `eligibility`.
+</ResponseField>
+<ResponseField name="user_id" type="string">
+  The user checked.
+</ResponseField>
+<ResponseField name="data" type="object[]">
+  One entry per instrument.
+
+  <Expandable title="properties" defaultOpen>
+    <ResponseField name="instrument" type="string">
+      The instrument id.
+    </ResponseField>
+    <ResponseField name="eligible" type="boolean">
+      Whether the user can buy the instrument.
+    </ResponseField>
+    <ResponseField name="buy_allowed" type="boolean">
+      Whether the user can buy.
+    </ResponseField>
+    <ResponseField name="sell_allowed" type="boolean">
+      Whether the user can sell what they hold.
+    </ResponseField>
+    <ResponseField name="hold_only" type="boolean">
+      `true` when the user can sell but not buy more.
+    </ResponseField>
+    <ResponseField name="reasons" type="object[]">
+      Why buying or selling isn't allowed. Each has a `code` and `message`. Empty when eligible.
+    </ResponseField>
+    <ResponseField name="required_actions" type="string[]">
+      Steps that would make the user eligible, when there are any.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<RequestExample>
+  ```bash cURL
+  curl "https://api.fissient.com/v1/users/usr_01M761XYYTGZK43AP9XK0WKQ97/eligibility?instruments=equity:NVDA,gold" \
+    -H "Authorization: Bearer $FISSIENT_KEY"
+  ```
+</RequestExample>
+
+<ResponseExample>
+  ```json 200
+  {
+    "object": "eligibility",
+    "user_id": "usr_01M761XYYTGZK43AP9XK0WKQ97",
+    "data": [
+      {
+        "instrument": "equity:NVDA",
+        "eligible": true,
+        "buy_allowed": true,
+        "sell_allowed": true,
+        "hold_only": false,
+        "reasons": [],
+        "required_actions": []
+      },
+      {
+        "instrument": "gold",
+        "eligible": true,
+        "buy_allowed": true,
+        "sell_allowed": true,
+        "hold_only": false,
+        "reasons": [],
+        "required_actions": []
+      }
+    ]
+  }
+  ```
+</ResponseExample>
